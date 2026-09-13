@@ -26,10 +26,16 @@ interface TransactionsViewProps {
   currency: string;
   onUpsert: (tx: Transaction) => void;
   onDelete: (id: string) => void;
+  /**
+   * Jumps to Réglages → Comptes & portefeuilles. Offered when a transfer is
+   * attempted with fewer than two accounts: the receiving wallet does not
+   * exist yet, and the form must say so instead of showing an empty list.
+   */
+  onGoToAccounts?: () => void;
 }
 
 export const TransactionsView: React.FC<TransactionsViewProps> = ({
-  accounts, transactions, categories, currency, onUpsert, onDelete,
+  accounts, transactions, categories, currency, onUpsert, onDelete, onGoToAccounts,
 }) => {
   const { t, locale } = useI18n();
   const [filters, setFilters] = useState<TxFilters>(emptyFilters);
@@ -242,6 +248,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
           currency={currency}
           editing={editing}
           onCancel={() => setModalOpen(false)}
+          onGoToAccounts={onGoToAccounts}
           onSubmit={(draft) => {
             onUpsert(draftToTransaction(draft, editing?.id));
             setModalOpen(false);
@@ -349,7 +356,7 @@ const TYPE_LABELS: Array<[TransactionType, string]> = [
   ['transfer', 'tx.type.transfer'],
 ];
 
-const TxModal: React.FC<{
+export const TxModal: React.FC<{
   modalRef: React.RefObject<HTMLFormElement>;
   accounts: Account[];
   categorySuggestions: string[];
@@ -358,7 +365,8 @@ const TxModal: React.FC<{
   editing: Transaction | null;
   onCancel: () => void;
   onSubmit: (draft: TransactionDraft) => void;
-}> = ({ modalRef, accounts, categorySuggestions, memberSuggestions, currency, editing, onCancel, onSubmit }) => {
+  onGoToAccounts?: () => void;
+}> = ({ modalRef, accounts, categorySuggestions, memberSuggestions, currency, editing, onCancel, onSubmit, onGoToAccounts }) => {
   const { t } = useI18n();
   const [draft, setDraft] = useState<TransactionDraft>(() =>
     editing ? transactionToDraft(editing) : emptyDraft()
@@ -489,6 +497,28 @@ const TxModal: React.FC<{
           </Field>
 
           {draft.type === 'transfer' ? (
+            accounts.length < 2 ? (
+              // No second account to receive the money: an empty select would
+              // read as a bug, so the form explains what is missing and offers
+              // the one-click path to create it.
+              <Field label={t('tx.toAccount')}>
+                <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2.5 text-xs text-amber-300 flex flex-wrap items-center justify-between gap-2">
+                  <span className="flex items-center gap-1.5">
+                    <ArrowLeftRight className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                    {t('tx.transferNeedsAccount')}
+                  </span>
+                  {onGoToAccounts && (
+                    <button
+                      type="button"
+                      onClick={onGoToAccounts}
+                      className="underline font-semibold hover:text-amber-200"
+                    >
+                      {t('tx.transferSetup')}
+                    </button>
+                  )}
+                </div>
+              </Field>
+            ) : (
             <Field label={t('tx.toAccount')} error={show('toAccountId')}>
               <select
                 value={draft.toAccountId ?? ''}
@@ -501,6 +531,7 @@ const TxModal: React.FC<{
                 ))}
               </select>
             </Field>
+            )
           ) : (
             <Field label={t('tx.member')} error={show('member')}>
               <input

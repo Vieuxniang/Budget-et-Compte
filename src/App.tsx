@@ -353,6 +353,7 @@ const AppShell: React.FC<{
             currency={currency}
             onUpsert={upsertTransaction}
             onDelete={deleteTransaction}
+            onGoToAccounts={() => setActiveTab('settings')}
           />
         ) : activeTab === 'budget' ? (
           <Suspense
