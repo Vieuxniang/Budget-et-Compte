@@ -1,0 +1,21 @@
+version: 2
+updates:
+  # One PR per action update: majors can be breaking (the v4→v7 bump took
+  # a coordinated look), so they are deliberately not grouped. Each PR is
+  # gated by the CI pipeline (typecheck, i18n, tests, build) like any push.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      # Minor and patch releases ride together to limit PR noise; a major
+      # (vite 6, vitest 3, react 19 …) still arrives alone for review.
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
