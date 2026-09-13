@@ -51,3 +51,14 @@ npm run build      # build de production (tsc + vite, artefact PWA)
 
 Les détails d'exploitation (artefacts, déploiement, surveillance, décision
 log) sont consignés dans [`.freebuff/run.md`](.freebuff/run.md).
+
+## Licence
+
+Code source **propriétaire, tous droits réservés** — visible publiquement à
+titre de transparence, mais aucune réutilisation, modification ou diffusion
+n'est autorisée sans accord écrit. Voir [LICENSE](LICENSE). L'application
+restera gratuite pour son usage normal ; la réserve porte sur la réutilisation
+du *code* par des tiers, pas sur l'usage de l'app.
+
+> Langue des documents : le README est en français (langue du produit) ; la
+> licence est en anglais (langue du droit).
