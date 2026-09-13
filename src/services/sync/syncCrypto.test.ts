@@ -91,7 +91,11 @@ describe('snapshot sealing', () => {
 
   it('returns null, rather than throwing, on tampered ciphertext', async () => {
     const blob = await sealSnapshot(keys, 1, snapshot);
-    const tampered = { ...blob, ct: `A${blob.ct.slice(1)}` };
+    // Replace the first base64 character with one GUARANTEED different: a
+    // literal 'A' prefix made this a 1-in-64 flake — when the ciphertext
+    // already started with 'A', nothing was tampered and opening succeeded.
+    const flipFirst = (s: string) => (s[0] === 'A' ? 'B' : 'A') + s.slice(1);
+    const tampered = { ...blob, ct: flipFirst(blob.ct) };
     await expect(openSnapshot(keys, 1, tampered)).resolves.toBeNull();
     await expect(openSnapshot(keys, 1, { v: 1, iv: blob.iv, ct: 'not-base64!!' })).resolves.toBeNull();
   });
