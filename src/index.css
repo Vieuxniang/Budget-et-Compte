@@ -1,0 +1,161 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Theme tokens (dark by default) — the slate palette, white and the four
+ * accent scales (emerald / red / sky / amber) map to these variables in
+ * tailwind.config.js, so html.light swaps the whole app at once.
+ *
+ * Accent values are not cosmetic: each one is measured against the panel it is
+ * painted on (4.5:1 for text, 3:1 for indicators) by
+ * src/services/contrast.test.ts, which reads this file. Change one here and the
+ * audit tells you if it drops below AA.
+ */
+:root {
+  --slate-50: 248 250 252;
+  --slate-100: 241 245 249;
+  --slate-200: 226 232 240;
+  --slate-300: 203 213 225;
+  --slate-400: 148 163 184;
+  --slate-500: 100 116 139;
+  --slate-600: 71 85 105;
+  --slate-700: 51 65 85;
+  --slate-800: 30 41 59;
+  --slate-900: 15 23 42;
+  --slate-950: 2 6 23;
+  --white: 255 255 255;
+
+  /* Accents (dark theme): Tailwind's default shades — all clear AA on the dark
+     panels, so nothing is remapped here. */
+  --emerald-300: 110 231 183;
+  --emerald-400: 52 211 153;
+  --emerald-500: 16 185 129;
+  --emerald-600: 5 150 105;
+  --emerald-800: 6 95 70;
+  --emerald-950: 2 44 34;
+  --red-300: 252 165 165;
+  --red-400: 248 113 113;
+  --red-500: 239 68 68;
+  --red-900: 127 29 29;
+  --sky-300: 125 211 252;
+  --sky-400: 56 189 248;
+  --sky-500: 14 165 233;
+  --amber-300: 252 211 77;
+  --amber-400: 251 191 36;
+  --amber-500: 245 158 11;
+  --amber-800: 146 64 14;
+}
+
+html.light {
+  /* Surfaces: page (slate-950) → slate-50, panels → white, inputs → slate-100. */
+  --slate-50: 248 250 252;
+  --slate-100: 15 23 42;      /* text-slate-100 (headings) → dark ink */
+  --slate-200: 30 41 59;      /* text-slate-200 (titles) → dark ink */
+  --slate-300: 51 65 85;      /* text-slate-300 (labels) → slate-700 */
+  --slate-400: 100 116 139;   /* muted text → slate-500 */
+  --slate-500: 100 116 139;
+  --slate-600: 71 85 105;
+  --slate-700: 203 213 225;   /* input borders / button hovers → slate-300 */
+  --slate-800: 241 245 249;   /* input & badge backgrounds → slate-100 */
+  --slate-900: 255 255 255;   /* panels → white */
+  --slate-950: 2 6 23;        /* kept dark: text-slate-950 on emerald buttons */
+  --white: 15 23 42;          /* text-white → dark ink */
+
+  /* Accents (light theme): darkened until the roles used in the app pass on
+     white panels — text 4.5:1, fills/indicators 3:1. The reason the whole
+     scale is remapped here (instead of a few .text-* overrides) is that the
+     same hue is also used as 10-30% tints, borders, rings and gradients. */
+  --emerald-300: 6 95 70;     /* emerald-800 → 7.68:1 (values, headings) */
+  --emerald-400: 4 120 87;    /* emerald-700 → 5.48:1 (labels, badges, focus ring) */
+  --emerald-500: 5 150 105;   /* emerald-600 → 3.77:1 (buttons, tabs, fills) */
+  --emerald-600: 4 120 87;    /* hover → 5.48:1 */
+  --red-300: 185 28 28;       /* red-700 → 6.47:1 */
+  --red-400: 220 38 38;       /* red-600 → 4.83:1 */
+  --red-500: 220 38 38;       /* tints and fills → 4.83:1 */
+  --sky-300: 7 89 133;        /* sky-800 → 7.56:1 */
+  --sky-400: 3 105 161;       /* sky-700 → 5.93:1 */
+  --sky-500: 2 132 199;       /* tints and borders → 4.10:1 */
+  --amber-300: 180 83 9;      /* amber-700 → 5.02:1 */
+  --amber-400: 180 83 9;      /* progress fill → 5.02:1 */
+  --amber-500: 217 119 6;     /* tints → 3.18:1 */
+
+  color-scheme: light;
+
+  /* The page background uses bg-slate-950, which must stay light here. */
+  .bg-slate-950 { background-color: rgb(248 250 252); }
+  /* Crisper panel borders than the slate-100 they map to by default. */
+  .border-slate-800 { border-color: rgb(226 232 240); }
+}
+
+@layer base {
+  /* Keyboard focus is always visible; mouse clicks don't get rings.
+     The color comes from the theme token (not theme()): the accent scales are
+     CSS variables now, which theme() would resolve to an invalid value. */
+  :focus-visible {
+    outline: 2px solid rgb(var(--emerald-400));
+    outline-offset: 2px;
+  }
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  /* Placeholders sit on bg-slate-800: use the theme token so they stay legible in both modes. */
+  input::placeholder,
+  textarea::placeholder {
+    color: rgb(var(--slate-400));
+    opacity: 1;
+  }
+
+  /* Native widgets must match the dark theme (color-scheme) so pickers,
+     scrollbars and the date input indicator stay legible. */
+  :root {
+    color-scheme: dark;
+  }
+
+  /* Respect users who disable animations (vestibular disorders). */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /*
+   * Skip link — plain CSS (not sr-only + focus: variants) because Tailwind's
+   * utility ordering let focus:absolute override focus:not-sr-only, keeping
+   * the link clipped even while focused.
+   */
+  .skip-link {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+  .skip-link:focus {
+    position: fixed;
+    top: 0.5rem;
+    left: 0.5rem;
+    z-index: 60;
+    width: auto;
+    height: auto;
+    margin: 0;
+    padding: 0.5rem 0.75rem;
+    overflow: visible;
+    clip: auto;
+    background: rgb(var(--emerald-500));
+    color: rgb(var(--slate-950));
+    border-radius: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+}

@@ -1,0 +1,46 @@
+# ---------------------------------------------------------------------------
+# Dependencies and build output — reproduced by `npm ci` and `npm run build`,
+# never committed.
+# ---------------------------------------------------------------------------
+node_modules/
+dist/
+dist-ssr/
+
+# ---------------------------------------------------------------------------
+# Secrets. The first entry is the reason this file exists: it is the private half
+# of the key pair that mints paid Pro licences. Committing it would let anyone
+# forge a licence for the app, and rotating the key pair would invalidate every
+# licence already sold (see the run doc's decision log).
+#
+# `.env.local` holds no secret today, but it is where local overrides go
+# (VITE_SHOP_URL), so it is ignored by convention like every other dotenv file.
+# ---------------------------------------------------------------------------
+.freebuff/license-private.jwk.json
+*.jwk.json
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.p12
+*.pfx
+.aws/
+.netrc
+
+# ---------------------------------------------------------------------------
+# Local dev scratch. `.freebuff/` is thread state: preview logs, relay data, the
+# shop-mailbox rehearsal (which holds usable demo licences). Only the run doc is
+# worth versioning, so it is re-included below.
+# ---------------------------------------------------------------------------
+.freebuff/*
+!.freebuff/run.md
+
+# ---------------------------------------------------------------------------
+# Logs and OS/editor noise
+# ---------------------------------------------------------------------------
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json

@@ -1,0 +1,52 @@
+# The shop: one Worker, which serves the payment pages *and* the three API
+# routes. Deploy with `npx wrangler deploy` from this directory.
+#
+# `site/` is the only directory published as static assets, on purpose: the
+# worker source and `core.js` must never be reachable over HTTP.
+
+name = "budget-et-compte-shop"
+main = "worker.js"
+compatibility_date = "2025-06-01"
+
+# Pages first, API afterwards: a request that matches a file in `site/` is served
+# directly, everything else falls through to the worker's `fetch` handler.
+[assets]
+directory = "site"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+
+# Orders live here (KV). Create it once, then paste the printed id:
+#   npx wrangler kv namespace create ORDERS
+[[kv_namespaces]]
+binding = "ORDERS"
+id = "REPLACE_WITH_YOUR_KV_ID"
+
+# The safety net under the webhook: every 15 minutes the worker re-asks CinetPay
+# about orders still waiting for money, so a notification that was lost (a deploy
+# during the callback, CinetPay's retries exhausted) still yields the buyer's
+# licence instead of a paid order that never delivers.
+[triggers]
+crons = ["*/15 * * * *"]
+
+[vars]
+# Where the worker is reachable — CinetPay posts its notification here, so it
+# must be the public HTTPS origin, never localhost.
+PUBLIC_BASE_URL = "https://licence.budgetetcompte.example"
+# Where the buyer lands after paying.
+SITE_URL = "https://licence.budgetetcompte.example/index.html"
+EMAIL_PROVIDER = "resend"
+EMAIL_FROM = "Budget et Compte <licences@budgetetcompte.example>"
+SUPPORT_EMAIL = "aide@budgetetcompte.example"
+# Empty = no CORS restriction (fine to start, tighten before scaling).
+ALLOWED_ORIGINS = ""
+CHECKOUT_LANG = "fr"
+# CinetPay sandbox: https://api-checkout.cinetpay.com (same host, test keys).
+CINETPAY_BASE_URL = "https://api-checkout.cinetpay.com"
+
+# Secrets — set with `npx wrangler secret put <NAME>`, NEVER written here:
+#   CINETPAY_API_KEY      CinetPay dashboard → Intégration
+#   CINETPAY_SITE_ID      CinetPay dashboard → Intégration
+#   RESEND_API_KEY        https://resend.com → API keys
+#   LICENSE_PRIVATE_JWK   one line, the contents of .freebuff/license-private.jwk.json
+#                         (public half must already be the LICENSE_PUBLIC_KEY
+#                         compiled into the app — see /README.md)

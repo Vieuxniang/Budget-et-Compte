@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Payer ma licence — Budget et Compte</title>
+<meta name="description" content="Payez votre licence Budget et Compte par Wave ou Orange Money. La clé arrive par e-mail, et l'application fonctionne ensuite hors-ligne.">
+<meta name="color-scheme" content="dark light">
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main>
+  <header class="brand">
+    <p class="brand-name">Budget et Compte</p>
+    <h1>Payer ma licence</h1>
+    <p class="lead">Wave, Orange Money, MTN ou Moov — vous choisirez l’opérateur sur la page de paiement sécurisée. Votre clé de licence arrive ensuite par e-mail.</p>
+  </header>
+
+  <form id="checkout" novalidate>
+    <section class="card">
+      <h2>1. Votre formule</h2>
+      <div class="choices" id="plans" role="radiogroup" aria-label="Formule"></div>
+    </section>
+
+    <section class="card">
+      <h2>2. Votre pays et votre opérateur</h2>
+      <label class="field">
+        <span for="country">Pays</span>
+        <select id="country" name="country" required></select>
+      </label>
+      <p class="hint">Opérateurs disponibles&nbsp;:</p>
+      <div class="operators" id="operators" aria-live="polite"></div>
+    </section>
+
+    <section class="card">
+      <h2>3. Où envoyer la clé</h2>
+      <label class="field">
+        <span for="email">Adresse e-mail</span>
+        <input id="email" name="email" type="email" inputmode="email" autocomplete="email"
+               placeholder="vous@exemple.com" required aria-describedby="email-hint">
+      </label>
+      <p class="hint" id="email-hint">La clé est envoyée à cette adresse. Sans e-mail, nous ne pouvons pas vous livrer — il n’y a pas de compte à créer.</p>
+
+      <label class="field">
+        <span for="name">Nom (facultatif)</span>
+        <input id="name" name="name" type="text" autocomplete="name" placeholder="Aïcha Diallo">
+      </label>
+
+      <label class="field">
+        <span for="phone">Numéro mobile money (facultatif)</span>
+        <input id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="77 123 45 67" aria-describedby="phone-hint">
+      </label>
+      <p class="hint" id="phone-hint">Le numéro qui paiera, si vous le connaissez déjà. Il accélère la validation.</p>
+
+      <button class="primary" id="pay" type="submit">Continuer vers le paiement</button>
+      <div id="message" role="alert" aria-live="assertive"></div>
+    </section>
+  </form>
+
+  <section class="card summary" hidden id="redirect-card">
+    <h2>Paiement en cours d’ouverture…</h2>
+    <p class="hint">Si la page de paiement ne s’ouvre pas, utilisez ce lien&nbsp;:</p>
+    <p><a id="redirect-link" class="mono" href="#">Ouvrir la page de paiement</a></p>
+  </section>
+
+  <footer class="legal">
+    <p>Le paiement est traité par CinetPay, qui ne transmet à nos serveurs que le montant et l’état de la transaction. Votre code mobile money n’est jamais saisi ici.</p>
+    <p>L’application elle-même reste 100 % locale&nbsp;: la clé est vérifiée sur votre téléphone et fonctionne sans connexion. <a href="thanks.html">Déjà payé ? Voir ma commande.</a></p>
+  </footer>
+</main>
+
+<script type="module" src="checkout.js"></script>
+</body>
+</html>

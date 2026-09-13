@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ma commande — Budget et Compte</title>
+<meta name="color-scheme" content="dark light">
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main>
+  <header class="brand">
+    <p class="brand-name">Budget et Compte</p>
+    <h1 id="heading">Votre commande</h1>
+    <p class="lead" id="lead">Nous vérifions le paiement auprès de l’opérateur.</p>
+  </header>
+
+  <section class="card">
+    <div class="status-line">
+      <span class="spinner" id="spinner" hidden></span>
+      <p id="status" aria-live="polite">Chargement…</p>
+    </div>
+    <div id="message" role="alert" aria-live="assertive"></div>
+  </section>
+
+  <section class="card summary" id="details" hidden>
+    <h2>Détail</h2>
+    <dl>
+      <dt>Référence</dt><dd class="mono" id="reference">—</dd>
+      <dt>Formule</dt><dd id="plan">—</dd>
+      <dt>Montant</dt><dd id="amount">—</dd>
+      <dt>E-mail</dt><dd id="email">—</dd>
+    </dl>
+  </section>
+
+  <section class="card" id="next-steps" hidden>
+    <h2>Et maintenant&nbsp;?</h2>
+    <ol class="steps">
+      <li>Ouvrez l’e-mail contenant votre clé <span class="mono">BCP1.…</span> (vérifiez les indésirables).</li>
+      <li>Dans l’application&nbsp;: <strong>Réglages → Offre &amp; licence</strong>.</li>
+      <li>Collez la clé, puis appuyez sur <strong>Activer</strong>. Aucune connexion n’est nécessaire.</li>
+    </ol>
+    <p class="hint" id="support"></p>
+  </section>
+
+  <footer class="legal">
+    <p><a href="index.html">Retour à la page de paiement</a></p>
+    <p>Le paiement peut prendre une minute après validation sur votre téléphone. Cette page se met à jour toute seule — vous pouvez la laisser ouverte ou revenir plus tard avec le lien de l’e-mail.</p>
+  </footer>
+</main>
+
+<script type="module" src="status.js"></script>
+</body>
+</html>

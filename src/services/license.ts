@@ -1,0 +1,257 @@
+/**
+ * Pro licenses — verified offline, on the device, with no server involved.
+ *
+ * A license is a signed string: `BCP1.<payload>.<signature>` where
+ *   - `<payload>`   is base64url(JSON): plan, licensee, issue date, optional expiry;
+ *   - `<signature>` is an ECDSA P-256 / SHA-256 signature over that exact base64url text.
+ *
+ * Only the PUBLIC key ships with the app, so any install can *verify* a license
+ * while nobody can *mint* one without the private key (see
+ * `scripts/license-keygen.mjs` and `scripts/mint-license.mjs`). Nothing about
+ * activating a license leaves the device.
+ *
+ * P-256 rather than Ed25519 on purpose: the key has to be verifiable by the
+ * customer's browser, and Ed25519 in WebCrypto only exists from Chrome/Edge
+ * 137 (Aug 2025), while P-256 has been universally supported for years —
+ * including Android WebViews and Electron shells that lag behind.
+ *
+ * The raw key is kept in its own localStorage entry — it is a signature, not a
+ * secret, and it must survive a password change or a data reset: a license is
+ * tied to the buyer, not to the vault.
+ */
+import { fromBase64Url } from './crypto';
+
+export const LICENSE_PREFIX = 'BCP1';
+
+/**
+ * Embedded public key (raw uncompressed EC point, base64url). It is not a
+ * secret. Regenerating the signing keypair invalidates every license already
+ * issued, so treat this value as permanent once licenses are sold.
+ */
+export const LICENSE_PUBLIC_KEY =
+  'BHaJZZsg73UCnc1_vBtC5L0ah_UscgTgKKIJ8pWosg4eBLo6unnvN0zDM9bJZPTUtImVvlwZFjPYLK98VZypOus';
+
+/** Key length of a raw uncompressed P-256 public key, in bytes (0x04 + X + Y). */
+export const ECDSA_PUBLIC_KEY_BYTES = 65;
+
+const STORAGE_KEY = 'patrifamille_license_v1';
+
+/**
+ * Paid plans. `pro` is the personal licence; `association` is the group licence
+ * that unlocks the tontine module without limits. Both are bought the same way
+ * (an offline signed key) — only the entitlements differ, so a price change
+ * never needs a code change.
+ */
+export type Plan = 'free' | 'pro' | 'association';
+
+/** Every plan that unlocks paid features. */
+export const PAID_PLANS: Plan[] = ['pro', 'association'];
+
+export function isPaidPlan(plan: Plan): boolean {
+  return PAID_PLANS.includes(plan);
+}
+
+export interface LicensePayload {
+  /** Payload format version. */
+  v: number;
+  /** Stable identifier of the buyer/order. */
+  id: string;
+  plan: Plan;
+  /** Display name of the licensee, when the seller records one. */
+  name?: string;
+  /** Issue date, 'YYYY-MM-DD'. */
+  issued: string;
+  /** 'YYYY-MM-DD' after which the license stops unlocking Pro; null = perpetual. */
+  expires?: string | null;
+}
+
+export type LicenseInvalidReason =
+  | 'format'
+  | 'signature'
+  | 'payload'
+  | 'expired'
+  | 'unsupported'
+  /**
+   * The platform could not even import the verification key (no P-256 in
+   * WebCrypto — exotic, but the message must not blame the customer's key).
+   */
+  | 'unavailable';
+
+export type LicenseState =
+  | { status: 'free' }
+  | { status: 'invalid'; reason: LicenseInvalidReason }
+  | { status: 'active'; plan: Plan; payload: LicensePayload };
+
+const INVALID_REASONS: LicenseInvalidReason[] = [
+  'format', 'signature', 'payload', 'expired', 'unsupported', 'unavailable',
+];
+
+/** True when `value` is one of the reasons verify() can report. */
+export function isInvalidReason(value: unknown): value is LicenseInvalidReason {
+  return typeof value === 'string' && (INVALID_REASONS as string[]).includes(value);
+}
+
+export interface ParsedLicense {
+  payloadB64: string;
+  signatureB64: string;
+  payload: LicensePayload;
+}
+
+/** Splits a key into its parts. Pure — no crypto, no storage. */
+export function parseLicenseKey(key: string): ParsedLicense | null {
+  const parts = key.trim().split('.');
+  if (parts.length !== 3 || parts[0] !== LICENSE_PREFIX) return null;
+  const [, payloadB64, signatureB64] = parts;
+  if (!payloadB64 || !signatureB64) return null;
+  try {
+    const decoded = JSON.parse(new TextDecoder().decode(fromBase64Url(payloadB64)));
+    if (!decoded || typeof decoded !== 'object') return null;
+    const { v, id, plan, name, issued, expires } = decoded as Record<string, unknown>;
+    if (v !== 1) return null;
+    if (typeof id !== 'string' || !id.trim()) return null;
+    if (plan !== 'pro' && plan !== 'free' && plan !== 'association') return null;
+    if (typeof issued !== 'string') return null;
+    if (name !== undefined && typeof name !== 'string') return null;
+    if (expires !== undefined && expires !== null && typeof expires !== 'string') return null;
+    return {
+      payloadB64,
+      signatureB64,
+      payload: {
+        v, id, plan, name: name as string | undefined, issued, expires: expires as string | null | undefined,
+      },
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** 'YYYY-MM-DD' → epoch ms, or null when the date is malformed. */
+function dayToTime(day: string): number | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
+  const time = Date.parse(`${day}T23:59:59.999Z`);
+  return Number.isNaN(time) ? null : time;
+}
+
+/** 'unsupported' means the platform cannot verify at all — not a bad key. */
+type SignatureCheck = 'ok' | 'bad' | 'unsupported';
+
+async function verifySignature(
+  payloadB64: string,
+  signatureB64: string,
+  publicKeyB64: string
+): Promise<SignatureCheck> {
+  let key: CryptoKey;
+  try {
+    key = await crypto.subtle.importKey(
+      'raw',
+      fromBase64Url(publicKeyB64) as unknown as BufferSource,
+      { name: 'ECDSA', namedCurve: 'P-256' },
+      false,
+      ['verify']
+    );
+  } catch {
+    // No P-256 in this engine: say so instead of blaming the customer's key.
+    return 'unsupported';
+  }
+  try {
+    const valid = await crypto.subtle.verify(
+      { name: 'ECDSA', hash: 'SHA-256' },
+      key,
+      fromBase64Url(signatureB64) as unknown as BufferSource,
+      new TextEncoder().encode(payloadB64)
+    );
+    return valid ? 'ok' : 'bad';
+  } catch {
+    // Malformed signature bytes (wrong length): a bad key, not a bad browser.
+    return 'bad';
+  }
+}
+
+/**
+ * Verifies a license key. Signature is checked BEFORE the expiry date, so a
+ * tampered payload can never buy extra time. `publicKey` / `now` exist for
+ * tests; in the app the embedded key and the real clock are used.
+ */
+export async function verifyLicenseKey(
+  key: string | null | undefined,
+  options: { publicKey?: string; now?: Date } = {}
+): Promise<LicenseState> {
+  if (!key || !key.trim()) return { status: 'free' };
+  const parsed = parseLicenseKey(key);
+  if (!parsed) return { status: 'invalid', reason: 'format' };
+  if (!isPaidPlan(parsed.payload.plan)) return { status: 'invalid', reason: 'unsupported' };
+
+  const signature = await verifySignature(
+    parsed.payloadB64,
+    parsed.signatureB64,
+    options.publicKey ?? LICENSE_PUBLIC_KEY
+  );
+  if (signature === 'unsupported') return { status: 'invalid', reason: 'unavailable' };
+  if (signature !== 'ok') return { status: 'invalid', reason: 'signature' };
+
+  if (parsed.payload.expires) {
+    const expiresAt = dayToTime(parsed.payload.expires);
+    if (expiresAt === null) return { status: 'invalid', reason: 'payload' };
+    if (expiresAt < (options.now ?? new Date()).getTime()) {
+      return { status: 'invalid', reason: 'expired' };
+    }
+  }
+
+  return { status: 'active', plan: parsed.payload.plan, payload: parsed.payload };
+}
+
+// ---------------------------------------------------------------------------
+// Feature gates (pure, so the limits are testable without a UI)
+// ---------------------------------------------------------------------------
+
+/** How many savings goals the plan allows. Existing goals are never hidden. */
+export function savingsGoalLimit(plan: Plan): number {
+  return isPaidPlan(plan) ? 25 : 1;
+}
+
+/**
+ * The tontine/association module is a group offering: it needs a paid licence.
+ * The personal licence allows one group (a family tontine); the association
+ * licence removes the limit, which is what a COOPEC or an NGO buys.
+ */
+export function tontineGroupLimit(plan: Plan): number {
+  if (plan === 'association') return 25;
+  return plan === 'pro' ? 1 : 0;
+}
+
+/** Members per group: generous on both paid plans, capped on the free one. */
+export function tontineMemberLimit(plan: Plan): number {
+  return plan === 'association' ? 200 : 30;
+}
+
+// ---------------------------------------------------------------------------
+// Local store — the raw key plus a tiny subscription for React
+// ---------------------------------------------------------------------------
+
+export function getStoredLicense(): string | null {
+  try {
+    return localStorage.getItem(STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+/** Stores the key (trimmed) or clears it when given null. Notifies listeners. */
+export function saveLicense(key: string | null): void {
+  try {
+    if (key && key.trim()) localStorage.setItem(STORAGE_KEY, key.trim());
+    else localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // Storage unavailable (private mode): the session keeps working unlocked in
+    // memory, it just cannot persist the license.
+  }
+  listeners.forEach((listener) => listener());
+}
+
+const listeners = new Set<() => void>();
+
+/** Subscribes to license changes; returns the unsubscribe function. */
+export function subscribeLicense(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
