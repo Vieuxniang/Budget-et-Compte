@@ -9,6 +9,7 @@
  */
 
 import type { RegisterSWOptions } from 'vite-plugin-pwa/types';
+import { idleCallback } from './startup';
 
 export interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -31,12 +32,15 @@ function emitOfflineReady(ready: boolean) {
 }
 
 /**
- * Registers the service worker on window load. Idempotent; call once from main.tsx.
+ * Registers the service worker when the page goes idle. Idempotent; call once
+ * from main.tsx. The SW only gates *later* loads, so it deliberately waits
+ * past first paint and interactivity — the old window-load hook still
+ * competed with the initial render for the main thread.
  * Also used by checkForUpdates() to re-check for a waiting worker.
  */
 export function registerPwa(): void {
   if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
-  window.addEventListener('load', () => {
+  idleCallback(() => {
     import('virtual:pwa-register')
       .then(({ registerSW }) => {
         const options: RegisterSWOptions = {
