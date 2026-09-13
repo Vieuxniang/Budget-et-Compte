@@ -188,6 +188,59 @@ exists once production keys are live and a real checkout completes.
 
 Refunds are the mirror image and are deliberately manual — see below.
 
+## CinetPay signup & KYC — one-pass checklist
+
+Sequence the four phases in order; each clears the rejection cause of the one
+after it.
+
+**Phase 0 — documents before the form** (clean color scans, name-matched):
+
+- [ ] Registre de commerce (sole trader: CNI + activity description via the
+      E-Shop track — confirm which track fits at signup)
+- [ ] Pièce d'identité du responsable légal (CNI/passport, matching the account)
+- [ ] RIB / wallet details **in the same name** — the #1 silent KYC mismatch
+- [ ] Useful extras: proof of address, live site URL (see Phase 1)
+
+**Phase 1 — account creation** (`panel.cinetpay.net/demande-compte`, 3–4 steps):
+
+- [ ] Real legal identity; e-mail you monitor (validation lands there)
+- [ ] Activity: "vente de licences logicielles (application Budget et Compte)"
+- [ ] Declare the site URL — **register the domain first**: a live
+      `https://budgetetcompte.ci` passes review; github.io invites rejection
+      (domain steps: the run doc's domain go-live checklist)
+- [ ] Sandbox `API_KEY`/`SITE_ID` issued immediately (Intégration) — grab them
+
+**Phase 2 — KYC + payout + production in ONE request:**
+
+- [ ] Upload the Phase 0 documents
+- [ ] Register the payout destination (wallet and/or bank) in the same pass —
+      see "Getting paid" above; first withdrawal becomes one click
+- [ ] Ask the onboarding contact explicitly for production activation, webhook
+      capability, and written payout fees/minimums/delays for your country
+- [ ] Validation typically 1–3 business days → run Phase 3 while waiting
+
+**Phase 3 — sandbox rehearsal while validation waits** (see Setup above):
+
+- [ ] Sandbox keys into `wrangler.toml`, KV namespace, the four secrets, deploy
+- [ ] `curl /health` → `ready:true`
+- [ ] Full rehearsal from the app UI: buy → checkout → simulated payment →
+      mailbox → key → Pro unlocked. Validation day is then a key-swap, not a
+      debugging session
+
+**Phase 4 — validation lands (go live):**
+
+- [ ] Swap the two CinetPay secrets for production values — the API host is
+      identical, nothing else changes
+- [ ] Dashboard: notification URL = `https://licence.budgetetcompte.ci/api/notify`
+      (= `PUBLIC_BASE_URL`; CinetPay retries non-2xx, which self-heals mail
+      outages)
+- [ ] `curl /health`, then the run doc's go-live sequence: `SHOP_URL` variable →
+      buy button on the live PWA → one real test purchase
+
+**Rejection causes to preempt:** (1) name mismatch across CNI / wallet / RIB /
+account; (2) declared site dead or under construction — domain before KYC;
+(3) activity description not matching what buyers are charged for.
+
 ## Not covered, deliberately
 
 - **No account, no password**: the e-mail address is the only identifier, so a
