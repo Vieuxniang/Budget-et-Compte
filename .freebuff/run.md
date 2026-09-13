@@ -22,6 +22,8 @@ grep -rn "Comptes & Budgets" --include="*.ts" --include="*.tsx" --include="*.htm
 grep -rln "Budget et Compte" index.html vite.config.ts src/i18n/translations.ts public/icons/*.svg STORE_LISTING.md
 ```
 
+**Branch protection (ruleset "main requires verify", id 23183182).** `main` requires the `verify` check green before anything lands — **with no bypass, not even for the owner** — plus deletion and force-push protection. Consequence that matters day-to-day: **direct pushes to `main` are refused** unless GitHub has already run `verify` on those exact commits, so the flow is branch → PR → green `verify` → merge (the merge then triggers the deploy). The CI workflow runs on `pull_request` for this reason. The local pre-push gate was retired when the ruleset landed — a server-side rule beats a bypassable local hook; a local full-gate run before pushing remains useful as a courtesy, not a gate. The first push after the ruleset was created was blocked by it, live, as the proof.
+
 ## 2. Run the dev server
 
 Default port **5173** (Vite default; free at setup). From the project root:
