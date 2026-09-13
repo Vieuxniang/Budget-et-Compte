@@ -1,9 +1,12 @@
 #!/bin/sh
-# One-time setup for the deploy job in .github/workflows/ci.yml.
+# One-time setup for the deploy job in .github/workflows/ci.yml: store
+# CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID as GitHub repository
+# secrets so CI can publish the built site.
 #
-#   1. creates the Cloudflare Pages project `budget-et-compte`;
-#   2. stores CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID as GitHub
-#      repository secrets so CI can publish the built site.
+# The Pages project itself is NOT created here — `wrangler pages deploy`
+# auto-creates `budget-et-compte` on the first CI deploy (needs the same
+# Pages:Edit grant), so this script has exactly one job and no other
+# failure modes.
 #
 # Credentials are read from the environment or a hidden prompt — never as
 # command-line arguments, which would leak through `ps` and shell history.
@@ -11,13 +14,12 @@
 # "Cloudflare Pages — Edit" only.
 #
 # Usage:
-#   CLOUDFLARE_API_TOKEN=… scripts/cloudflare-deploy-setup.sh
-#   scripts/cloudflare-deploy-setup.sh           # prompts for the token
+#   CLOUDFLARE_API_TOKEN=… CLOUDFLARE_ACCOUNT_ID=… scripts/cloudflare-deploy-setup.sh
+#   scripts/cloudflare-deploy-setup.sh           # prompts for both
 #   GH_REPO=owner/name scripts/cloudflare-deploy-setup.sh
 set -eu
 
 REPO="${GH_REPO:-Vieuxniang/Budget-et-Compte}"
-PROJECT="budget-et-compte"
 
 command -v gh >/dev/null 2>&1 || { echo "gh is required" >&2; exit 1; }
 gh auth status >/dev/null 2>&1 || { echo "gh is not authenticated (gh auth login)" >&2; exit 1; }
@@ -39,12 +41,20 @@ if [ -z "$ACCOUNT_ID" ]; then
 fi
 [ -n "$ACCOUNT_ID" ] || { echo "no account id given" >&2; exit 1; }
 
-echo "— creating Pages project '$PROJECT' (skipped if it exists)…"
-CLOUDFLARE_API_TOKEN="$TOKEN" CLOUDFLARE_ACCOUNT_ID="$ACCOUNT_ID" \
-  npx wrangler pages project create "$PROJECT" --production-branch=main 2>&1 |
-  tail -2 || echo "  (exists already — continuing)"
-
 echo "— storing GitHub secrets in $REPO…"
 gh secret set CLOUDFLARE_API_TOKEN --repo "$REPO" --body "$TOKEN"
 gh secret set CLOUDFLARE_ACCOUNT_ID --repo "$REPO" --body "$ACCOUNT_ID"
-echo "✓ done — the next push to main (or a manual 'Deploy site' run) publishes."
+
+# A receipt (names only — values are never written anywhere) so the setup
+# can be verified from the shared workspace without asking anyone to trust
+# a terminal they cannot see.
+RECEIPT=".freebuff/cf-setup-receipt.txt"
+{
+  echo "date: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  echo "gh: $(command -v gh)"
+  echo "gh account: $(gh api user --jq .login 2>/dev/null || echo unknown)"
+  echo "repo: $REPO"
+  echo "secrets now on repo:"
+  gh secret list --repo "$REPO"
+} > "$RECEIPT"
+echo "✓ done — receipt: $RECEIPT (names only)"
