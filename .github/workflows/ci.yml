@@ -3,6 +3,7 @@ name: CI
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -41,3 +42,49 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      # The exact bytes CI verified are what deploy publishes — no rebuild
+      # in the deploy job, no drift between "tested" and "shipped".
+      - name: Upload site artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: site
+          path: dist/
+          retention-days: 7
+
+  deploy:
+    # Publishes the audited build to Cloudflare Pages. Needs the one-time
+    # setup (scripts/cloudflare-deploy-setup.sh): the CLOUDFLARE_API_TOKEN
+    # and CLOUDFLARE_ACCOUNT_ID repository secrets. Until they exist the
+    # publish step is skipped (with a notice) and CI stays green.
+    needs: verify
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    env:
+      # Step-level `if` cannot read `secrets` directly; mirror it here.
+      CF_TOKEN_SET: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+    steps:
+      - name: Download site artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: site
+          path: dist
+
+      - name: Publish to Cloudflare Pages
+        if: env.CF_TOKEN_SET == 'true'
+        uses: cloudflare/wrangler-action@v3
+        env:
+          WRANGLER_LOG: error
+        with:
+          # Least-privilege token: Cloudflare Pages → Edit only. The first
+          # deploy creates the `budget-et-compte` project; afterwards every
+          # push to main becomes a production deployment automatically.
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=budget-et-compte --branch=main --commit-dirty=true
+
+      - name: Deploy skipped — one-time setup not done
+        if: env.CF_TOKEN_SET != 'true'
+        run: |
+          echo "Deploy skipped: CLOUDFLARE_API_TOKEN is not a repository secret yet."
+          echo "One-time setup: scripts/cloudflare-deploy-setup.sh (see run doc, decision log)."
