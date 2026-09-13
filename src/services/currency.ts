@@ -71,10 +71,28 @@ const REGION_TO_CURRENCY: Record<string, string> = {
 export const DEFAULT_CURRENCY = 'XOF';
 
 /**
+ * The runtime locale, resolved **once**. `Intl.DateTimeFormat()` construction
+ * is real ICU work; `detectCurrency` used to pay it on *every render* through
+ * its default parameter (the top self-time entry in the CPU profile of a
+ * fresh load), so the value is now cached at module level.
+ */
+let runtimeLocale: string | null = null;
+function getRuntimeLocale(): string {
+  if (runtimeLocale === null) {
+    try {
+      runtimeLocale = Intl.DateTimeFormat().resolvedOptions().locale || 'fr-FR';
+    } catch {
+      runtimeLocale = 'fr-FR';
+    }
+  }
+  return runtimeLocale;
+}
+
+/**
  * Best-effort currency from the user's region. `locale` is injectable for
  * tests; at runtime it is the browser's resolved locale (e.g. "fr-SN" → XOF).
  */
-export function detectCurrency(locale = Intl.DateTimeFormat().resolvedOptions().locale): string {
+export function detectCurrency(locale = getRuntimeLocale()): string {
   // Only a language-region form (e.g. "fr-SN") carries a region; a bare
   // language code like "fr" must not be mistaken for the region "FR".
   if (locale.includes('-')) {
@@ -91,11 +109,21 @@ export function detectCurrency(locale = Intl.DateTimeFormat().resolvedOptions().
  * Guarded like `Intl.supportedValuesOf` below: the API is recent, and `of()`
  * throws on a code it does not know, so this must never be the only path.
  */
+/**
+ * `Intl.DisplayNames` per locale, cached — construction is ICU work and this
+ * used to run per lookup (currency names in the picker, packs and settings).
+ */
+const displayNamesByLocale = new Map<string, { of(c: string): string | undefined }>();
 function systemCurrencyName(code: string, locale: string): string | null {
   try {
     const DisplayNames = (Intl as { DisplayNames?: new (l: string, o: { type: string }) => { of(c: string): string | undefined } }).DisplayNames;
     if (!DisplayNames) return null;
-    const name = new DisplayNames(locale, { type: 'currency' }).of(code);
+    let dn = displayNamesByLocale.get(locale);
+    if (!dn) {
+      dn = new DisplayNames(locale, { type: 'currency' });
+      displayNamesByLocale.set(locale, dn);
+    }
+    const name = dn.of(code);
     return name && name !== code ? name : null;
   } catch {
     return null;
@@ -197,23 +225,47 @@ function isSupportedCurrency(code: string): boolean {
 }
 
 /**
+ * `Intl.NumberFormat` per (locale, currency), cached — construction is the
+ * expensive part (ICU data lookup), and `formatMoney` runs for every amount
+ * on every render. One instance per pair, reused for all amounts.
+ */
+const formatters = new Map<string, Intl.NumberFormat | null>();
+function numberFormatFor(locale: string, code: string): Intl.NumberFormat | null {
+  const key = `${locale}|${code}`;
+  let f = formatters.get(key);
+  if (f === undefined) {
+    try {
+      f = new Intl.NumberFormat(locale, {
+        style: 'currency',
+        currency: code,
+        currencyDisplay: 'narrowSymbol',
+        maximumFractionDigits: 0,
+      });
+    } catch {
+      f = null;
+    }
+    formatters.set(key, f);
+  }
+  return f;
+}
+
+/**
  * Formats an amount in the given currency, whole units — matching the app's
  * integer data model. `locale` follows the app language (fr-FR by default).
  * Unknown codes fall back to XOF.
  */
 export function formatMoney(amount: number, currency: string, locale = 'fr-FR'): string {
-  const code = (currency || DEFAULT_CURRENCY).trim().toUpperCase();
-  if (!isSupportedCurrency(code)) {
+  const code = normalizeCurrencyCode(currency) || DEFAULT_CURRENCY;
+  if (code !== DEFAULT_CURRENCY && !isSupportedCurrency(code)) {
     return formatMoney(amount, DEFAULT_CURRENCY, locale);
   }
-  try {
-    return new Intl.NumberFormat(locale, {
-      style: 'currency',
-      currency: code,
-      currencyDisplay: 'narrowSymbol',
-      maximumFractionDigits: 0,
-    }).format(amount);
-  } catch {
-    return formatMoney(amount, DEFAULT_CURRENCY, locale);
+  const formatter = numberFormatFor(locale, code);
+  // Construction failed for this code: fall back, but never recurse on the
+  // default itself — a broken ICU gets plain grouped digits instead.
+  if (!formatter) {
+    return code === DEFAULT_CURRENCY
+      ? new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(amount)
+      : formatMoney(amount, DEFAULT_CURRENCY, locale);
   }
+  return formatter.format(amount);
 }
