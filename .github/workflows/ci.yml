@@ -45,9 +45,11 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          # Pages serves a project site from the repo subpath. The same
-          # build is both tested and deployed, so the base is set here.
-          VITE_BASE: /${{ github.event.repository.name }}/
+          # Pages serves a project site from the repo subpath by default.
+          # When a custom domain is attached (repository variable PAGES_BASE
+          # set to "/" by scripts/custom-domain.sh), the same build ships
+          # root-relative. The same build is both tested and deployed.
+          VITE_BASE: ${{ vars.PAGES_BASE || format('/{0}/', github.event.repository.name) }}
 
       # The exact bytes CI verified are what deploy publishes — no rebuild
       # in the deploy job, no drift between "tested" and "shipped".
@@ -101,4 +103,4 @@ jobs:
         # Retries sized to absorb the first deployment's propagation.
         env:
           SMOKE_RETRIES: '12'
-        run: scripts/smoke-test.sh "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"
+        run: scripts/smoke-test.sh "${{ vars.SITE_URL || format('https://{0}.github.io/{1}/', github.repository_owner, github.event.repository.name) }}"
