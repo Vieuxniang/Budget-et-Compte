@@ -5,8 +5,12 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# `pages: write` + `id-token: write` are what the GitHub Pages deploy
+# (OIDC) needs; `contents: read` is the least the checkout requires.
 permissions:
   contents: read
+  pages: write
+  id-token: write
 
 # A new push to main supersedes the run from the previous one.
 concurrency:
@@ -42,6 +46,10 @@ jobs:
 
       - name: Build
         run: npm run build
+        env:
+          # Pages serves a project site from the repo subpath. The same
+          # build is both tested and deployed, so the base is set here.
+          VITE_BASE: /${{ github.event.repository.name }}/
 
       # The exact bytes CI verified are what deploy publishes — no rebuild
       # in the deploy job, no drift between "tested" and "shipped".
@@ -53,16 +61,16 @@ jobs:
           retention-days: 7
 
   deploy:
-    # Publishes the audited build to Cloudflare Pages. Needs the one-time
-    # setup (scripts/cloudflare-deploy-setup.sh): the CLOUDFLARE_API_TOKEN
-    # and CLOUDFLARE_ACCOUNT_ID repository secrets. Until they exist the
-    # publish step is skipped (with a notice) and CI stays green.
+    # Publishes the audited build to GitHub Pages (the repo is public, so
+    # Pages needs no secret and no third-party token). The artifact from
+    # verify is re-uploaded in the Pages format and deployed — still the
+    # same tested bytes.
     needs: verify
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    env:
-      # Step-level `if` cannot read `secrets` directly; mirror it here.
-      CF_TOKEN_SET: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Download site artifact
         uses: actions/download-artifact@v4
@@ -70,27 +78,20 @@ jobs:
           name: site
           path: dist
 
-      - name: Publish to Cloudflare Pages
-        if: env.CF_TOKEN_SET == 'true'
-        uses: cloudflare/wrangler-action@v3
-        env:
-          WRANGLER_LOG: error
-        with:
-          # Least-privilege token: Cloudflare Pages → Edit only. The first
-          # deploy creates the `budget-et-compte` project; afterwards every
-          # push to main becomes a production deployment automatically.
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist --project-name=budget-et-compte --branch=main --commit-dirty=true
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
 
-      - name: Deploy skipped — one-time setup not done
-        if: env.CF_TOKEN_SET != 'true'
-        run: |
-          echo "Deploy skipped: CLOUDFLARE_API_TOKEN is not a repository secret yet."
-          echo "One-time setup: scripts/cloudflare-deploy-setup.sh (see run doc, decision log)."
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
 
       - name: Smoke-test the live site
-        # Same gate as the publish step: nothing new was deployed when the
-        # setup is missing, so there is nothing to smoke-test.
-        if: env.CF_TOKEN_SET == 'true'
-        run: scripts/smoke-test.sh https://budget-et-compte.pages.dev
+        # Retries sized to absorb the first deployment's propagation.
+        env:
+          SMOKE_RETRIES: '12'
+        run: scripts/smoke-test.sh "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"

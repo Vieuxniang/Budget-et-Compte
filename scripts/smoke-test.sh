@@ -13,6 +13,7 @@
 set -eu
 
 BASE="${1:?usage: smoke-test.sh <base-url>}"
+BASE="${BASE%/}"   # tolerate a trailing slash from hand-written URLs
 ATTEMPTS="${SMOKE_RETRIES:-6}"
 WAIT_SECS="${SMOKE_WAIT:-10}"
 

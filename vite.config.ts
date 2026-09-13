@@ -3,6 +3,11 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
+  // GitHub Pages serves a project site from /<repo>/ — the base is set at
+  // build time (VITE_BASE, set in CI's Build step) so a local build stays
+  // at '/'. vite-plugin-pwa derives the SW scope and the manifest's
+  // start_url from this, so the PWA stays installable under the subpath.
+  base: process.env.VITE_BASE || '/',
   plugins: [
     react(),
     VitePWA({
