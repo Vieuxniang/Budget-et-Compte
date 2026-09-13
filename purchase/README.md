@@ -161,6 +161,33 @@ node ../scripts/mint-license.mjs --id BC20260912K7F3Q9M2 --name "Kofi Mensah" --
 A licence issued by hand and one issued by the Worker are byte-compatible: both
 are `BCP1.<base64url payload>.<raw r||s ECDSA P-256 signature>`.
 
+## Getting paid
+
+The buyer's Wave/Orange Money payment never lands directly in a personal
+wallet. The flow has two hops:
+
+1. **Buyer → CinetPay balance.** Every checkout (Wave, Orange Money,
+   MTN/Moov, card) credits the *merchant* CinetPay account the keys in this
+   repo are bound to. This hop is what makes licence delivery automatic:
+   the notification webhook and the 15-minute cron both key off CinetPay's
+   own record of the payment. Taking payments outside the gateway (a
+   personal Wave number, cash) produces money but no webhook — the order
+   stays pending and no key is minted.
+2. **CinetPay balance → you.** Withdraw from the merchant dashboard to a
+   Mobile Money wallet or a bank account. Fees, minimum amounts and
+   settlement delays vary by country and method — confirm the current
+   numbers in the dashboard before pricing decisions.
+
+**Register the payout destination during KYC** (the same merchant
+validation that unlocks production `CINETPAY_API_KEY`/`SITE_ID`): add the
+wallet number and/or bank details then, so the first withdrawal is one
+click instead of a support ticket.
+
+Sandbox tests move no real money in either direction — the balance only
+exists once production keys are live and a real checkout completes.
+
+Refunds are the mirror image and are deliberately manual — see below.
+
 ## Not covered, deliberately
 
 - **No account, no password**: the e-mail address is the only identifier, so a
