@@ -88,3 +88,9 @@ jobs:
         run: |
           echo "Deploy skipped: CLOUDFLARE_API_TOKEN is not a repository secret yet."
           echo "One-time setup: scripts/cloudflare-deploy-setup.sh (see run doc, decision log)."
+
+      - name: Smoke-test the live site
+        # Same gate as the publish step: nothing new was deployed when the
+        # setup is missing, so there is nothing to smoke-test.
+        if: env.CF_TOKEN_SET == 'true'
+        run: scripts/smoke-test.sh https://budget-et-compte.pages.dev
