@@ -26,6 +26,11 @@ export default defineConfig({
         description:
           'Gestion financière familiale 100% locale — comptes, budget et Mobile Money.',
         lang: 'fr',
+        // Canonical web origin, settled 2026-09-13 (see STORE_LISTING.md and the
+        // run doc): the apex is canonical and www redirects to it. The manifest
+        // id pins PWA identity to it so a future host or path change can never
+        // reset an installed app's storage, push subscription or icon.
+        id: 'https://budgetetcompte.ci/',
         start_url: './',
         scope: './',
         display: 'standalone',

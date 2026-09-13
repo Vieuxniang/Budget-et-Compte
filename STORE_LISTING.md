@@ -19,6 +19,14 @@ encrypted backups, trilingual UI, multi-currency.
 
 ---
 
+## Web app (PWA)
+
+- **Canonical URL:** `https://budgetetcompte.ci` — the apex is canonical, `www` 301s to it. This is the listing URL for the web install, and the domain the PWA manifest `id` is pinned to (see `vite.config.ts`).
+- **Install:** open the URL on a phone or desktop browser → « Ajouter à l'écran d'accueil » / « Installer ».
+- **Listing consistency rule:** the web listing must carry the same brand, tagline and honesty rules as the store listings; feature claims change in the same release everywhere.
+
+---
+
 ## Play Store
 
 ### Short description (≤ 80 chars — 73 used)
@@ -124,3 +132,6 @@ famille, FCFA, hors ligne, confidentialité.
   re-verify after any wording change.
 - The built-in PWA description (`vite.config.ts` manifest + `index.html` meta) is
   already aligned with this copy.
+- The web URL is wired to GitHub Pages by `scripts/custom-domain.sh` (DNS records,
+  HTTPS enforcement, CNAME through the protected PR flow) — see the run doc's
+  custom-domain paragraph for the procedure and its prerequisites.
