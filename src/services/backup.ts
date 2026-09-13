@@ -176,11 +176,17 @@ export async function readEncryptedBackup(
 export function backupSummary(data: AppData, t: Translate = frTranslate): string {
   const tx = data.transactions.length;
   const acc = data.accounts.length;
+  const groups = data.tontineGroups?.length ?? 0;
+  const packs = data.installedPacks?.length ?? 0;
   return t('backup.summary', {
     accounts: acc,
     s: acc > 1 ? 's' : '',
     txs: tx,
     goals: data.goals.length,
     cats: data.budgetCategories.length,
+    groups,
+    groupsPlural: groups > 1 ? 's' : '',
+    packs,
+    packsPlural: packs > 1 ? 's' : '',
   });
 }

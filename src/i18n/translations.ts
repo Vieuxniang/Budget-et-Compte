@@ -414,7 +414,7 @@ export const fr: Dict = {
   'backup.missingData': 'Données absentes de la sauvegarde.',
   'backup.missingEnvelope': 'Enveloppe chiffrée absente ou invalide.',
   'backup.malformedEnvelope': 'Enveloppe chiffrée malformée.',
-  'backup.summary': '{accounts} compte{s} · {txs} opération{s} · {cats} catégories · {goals} objectifs',
+  'backup.summary': '{accounts} compte{s} · {txs} opération{s} · {cats} catégories · {goals} objectifs · {groups} tontine{groupsPlural} · {packs} pack{packsPlural}',
 
   // Months
   'months.1': 'janvier',
@@ -989,7 +989,7 @@ export const en: Dict = {
   'backup.missingData': 'No data in the backup.',
   'backup.missingEnvelope': 'Missing or invalid encrypted envelope.',
   'backup.malformedEnvelope': 'Malformed encrypted envelope.',
-  'backup.summary': '{accounts} account{s} · {txs} transaction{s} · {cats} categories · {goals} goals',
+  'backup.summary': '{accounts} account{s} · {txs} transaction{s} · {cats} categories · {goals} goals · {groups} tontine group{groupsPlural} · {packs} pack{packsPlural}',
 
   'months.1': 'January',
   'months.2': 'February',
@@ -1561,7 +1561,7 @@ export const es: Dict = {
   'backup.missingData': 'La copia no contiene datos.',
   'backup.missingEnvelope': 'Sobre cifrado ausente o no válido.',
   'backup.malformedEnvelope': 'Sobre cifrado malformado.',
-  'backup.summary': '{accounts} cuenta{s} · {txs} transacción{s} · {cats} categorías · {goals} objetivos',
+  'backup.summary': '{accounts} cuenta{s} · {txs} transacción{s} · {cats} categorías · {goals} objetivos · {groups} grupo{groupsPlural} de tontina · {packs} paquete{packsPlural}',
 
   'months.1': 'enero',
   'months.2': 'febrero',

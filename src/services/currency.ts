@@ -182,10 +182,6 @@ export function currencyChoices(current?: string, locale = 'fr-FR'): CurrencyCho
   return [...curated, { code, curated: false, label: systemCurrencyName(code, locale) ?? code }];
 }
 
-/**
- * Formats an amount in the given currency, French locale, whole units —
- * matching the app's integer data model. Invalid codes fall back to XOF.
- */
 /** ISO 4217 codes this runtime can actually format (cached). */
 let supportedCurrencies: Set<string> | null = null;
 function isSupportedCurrency(code: string): boolean {

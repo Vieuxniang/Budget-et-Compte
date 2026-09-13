@@ -12,7 +12,7 @@ export default defineConfig({
       registerType: 'prompt',
       // We call registerSW ourselves from src/services/pwa.ts.
       injectRegister: null,
-      includeAssets: ['icons/icon.svg', 'icons/maskable-icon.svg'],
+      includeAssets: ['icons/icon.svg'],
       manifest: {
         // The brand is a French proper name: identical in the fr/en/es UIs, and
         // identical here, so an installed app is named the same in every locale.

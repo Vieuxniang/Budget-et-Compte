@@ -30,8 +30,8 @@ describe('translate', () => {
   it('interpolates {vars}', () => {
     expect(translate(DICTIONARIES.fr, 'lock.passwordTooShort', { min: 6 }))
       .toBe('Le mot de passe doit contenir au moins 6 caractères.');
-    expect(translate(DICTIONARIES.en, 'backup.summary', { accounts: 3, s: 's', txs: 12, cats: 6, goals: 2 }))
-      .toBe('3 accounts · 12 transactions · 6 categories · 2 goals');
+    expect(translate(DICTIONARIES.en, 'backup.summary', { accounts: 3, s: 's', txs: 12, cats: 6, goals: 2, groups: 1, groupsPlural: '', packs: 2, packsPlural: 's' }))
+      .toBe('3 accounts · 12 transactions · 6 categories · 2 goals · 1 tontine group · 2 packs');
   });
 
   it('falls back to French, then the key itself, when a key is missing', () => {

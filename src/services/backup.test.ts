@@ -130,6 +130,20 @@ describe('helpers', () => {
     expect(s).toContain('2 opérations');
     expect(s).toContain('6 catégories');
     expect(s).toContain('2 objectifs');
+    expect(s).not.toContain('NaN');
+    expect(s).not.toContain('undefined');
+  });
+
+  it('summary counts the optional tontine and pack sections, singular included', () => {
+    const data = sample();
+    data.tontineGroups = [{ id: 'tg-1', name: 'G', contribution: 5000, currency: 'XOF', frequency: 'monthly', startDate: '2026-01-01' }];
+    data.tontineGroups.push({ ...data.tontineGroups[0], id: 'tg-2' });
+    data.installedPacks = [{ id: 'sn-2025', version: 1, installedAt: '2026-09-01' }];
+
+    const s = backupSummary(data);
+    expect(s).toContain('2 tontines');
+    expect(s).toContain('1 pack');
+    expect(s).not.toContain('1 packs');
   });
 
   it('downloadBackup is a safe no-op outside the browser', () => {
