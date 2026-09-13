@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Wallet, Shield, Lock, TrendingDown, Smartphone } from 'lucide-react';
 import { AppData, getSecurityConfig, saveSecurityConfig } from './services/storage';
 import { detectCurrency, formatMoney } from './services/currency';
@@ -12,13 +12,19 @@ import { SyncEngine } from './services/sync/engine';
 import { ACCOUNT_TYPE_META, walletBrandColor, accountTypeLabelKey } from './services/accountMeta';
 import { useInstallPrompt } from './hooks/useInstallPrompt';
 import { createDataStore, useDataStore } from './hooks/useDataStore';
+// BudgetView is the one heavy view (recharts, ~430 kB of the bundle). It is
+// the single lazy route: the dashboard renders without it, and it streams in
+// on first visit to the Budget tab. Kept eager: the locked shell and the
+// LCP-critical dashboard.
+const BudgetView = lazy(() =>
+  import('./components/BudgetView').then((m) => ({ default: m.BudgetView })),
+);
 import { AuthLock, UnlockedPayload } from './components/AuthLock';
 import { CareerGuideView } from './components/CareerGuideView';
 import { TransactionsView } from './components/TransactionsView';
 import { TontineView } from './components/TontineView';
 import { PacksView } from './components/PacksView';
 import { SettingsView } from './components/SettingsView';
-import { BudgetView } from './components/BudgetView';
 import { PwaToasts } from './components/PwaToasts';
 import { useAutoLock } from './hooks/useAutoLock';
 import { ROVING_ROW_FOCUS, useRovingListNav } from './hooks/useRovingListNav';
@@ -349,12 +355,20 @@ const AppShell: React.FC<{
             onDelete={deleteTransaction}
           />
         ) : activeTab === 'budget' ? (
-          <BudgetView
+          <Suspense
+            fallback={
+              <div className="flex justify-center py-16" role="status" aria-live="polite">
+                <div className="animate-pulse text-sm text-slate-400">{t('app.loadingChart')}</div>
+              </div>
+            }
+          >
+            <BudgetView
             categories={data.budgetCategories}
             transactions={data.transactions}
             currency={currency}
-            theme={theme}
-          />
+              theme={theme}
+            />
+          </Suspense>
         ) : activeTab === 'tontine' ? (
           <TontineView
             groups={data.tontineGroups ?? []}
