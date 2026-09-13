@@ -43,26 +43,34 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Smoke-test the live site
-        id: smoke
-        # Sized to stay under a couple of minutes; scheduled checks do not
-        # need the deploy path's propagation patience.
-        env:
-          SMOKE_RETRIES: '4'
-          SMOKE_WAIT: '15'
-        run: scripts/smoke-test.sh "$URL"
-
-      - name: Record the failure (open or update the issue)
-        if: steps.smoke.outcome == 'failure'
+      - name: Smoke-test the live site (failure recorded inline)
+        # Branching lives in the shell on the script's real exit code, not
+        # in step-level `if:` expressions: a skipped recording step would
+        # be a silent hole in the uptime record, and the outcome context
+        # proved unreliable (observed: outcome == failure with the
+        # dependant step skipped). `if`-conditions are exempt from errexit,
+        # so the script's non-zero exit reaches this branch untouched.
         env:
           GH_TOKEN: ${{ github.token }}
+          SMOKE_RETRIES: '4'
+          SMOKE_WAIT: '15'
         run: |
-          OPEN=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open \
-            --search "Uptime failure in:title" --json number --jq '.[].number')
-          if [ -z "$OPEN" ]; then
-            gh issue create --repo "$GITHUB_REPOSITORY" \
-              --title "Uptime failure — smoke test failing against $URL" \
-              --body "The scheduled smoke test failed against \`$URL\`.
+          if scripts/smoke-test.sh "$URL"; then
+            OPEN=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open \
+              --search "Uptime failure in:title" --json number --jq '.[].number')
+            [ -z "$OPEN" ] && exit 0
+            for N in $OPEN; do
+              gh issue close "$N" --repo "$GITHUB_REPOSITORY" \
+                --comment "Recovered — smoke test passes against \`$URL\` ($RUN_URL)."
+            done
+            echo "✓ recovered; issue(s) closed: $OPEN"
+          else
+            OPEN=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open \
+              --search "Uptime failure in:title" --json number --jq '.[].number')
+            if [ -z "$OPEN" ]; then
+              gh issue create --repo "$GITHUB_REPOSITORY" \
+                --title "Uptime failure — smoke test failing against $URL" \
+                --body "The scheduled smoke test failed against \`$URL\`.
 
           First failing run: $RUN_URL
           Detected: $(date -u '+%Y-%m-%d %H:%M:%SZ')
@@ -71,23 +79,11 @@ jobs:
           webmanifest and the service worker (scripts/smoke-test.sh). This
           issue closes automatically on the next passing check — failures
           in between are appended as comments."
-          else
-            for N in $OPEN; do
-              gh issue comment "$N" --repo "$GITHUB_REPOSITORY" \
-                --body "Still failing: $RUN_URL ($(date -u '+%Y-%m-%d %H:%M:%SZ'))."
-            done
+            else
+              for N in $OPEN; do
+                gh issue comment "$N" --repo "$GITHUB_REPOSITORY" \
+                  --body "Still failing: $RUN_URL ($(date -u '+%Y-%m-%d %H:%M:%SZ'))."
+              done
+            fi
+            exit 1   # keep the run red in Actions
           fi
-
-      - name: Record the recovery (close the issue)
-        if: steps.smoke.outcome == 'success'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          OPEN=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open \
-            --search "Uptime failure in:title" --json number --jq '.[].number')
-          [ -z "$OPEN" ] && exit 0
-          for N in $OPEN; do
-            gh issue close "$N" --repo "$GITHUB_REPOSITORY" \
-              --comment "Recovered — smoke test passes against \`$URL\` ($RUN_URL)."
-          done
-          echo "✓ recovered; issue(s) closed: $OPEN"
