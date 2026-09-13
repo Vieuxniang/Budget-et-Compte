@@ -1,0 +1,93 @@
+name: Uptime
+
+# Scheduled smoke test against the deployed PWA. The deploy job in ci.yml
+# answers "did this push deploy correctly?"; this workflow answers the
+# other half — "is the site still up right now?" — catching the failures
+# that happen between pushes (Pages outages, certificate problems,
+# propagation gone wrong). Failures are recorded durably: the first
+# failed run opens an issue, later failures append a comment with the run
+# link, and a passing run closes the issue as recovered. The failing run
+# itself also goes red in the Actions tab.
+#
+# Rehearsable by hand: run the workflow with a `url` input pointing at a
+# dead URL (opens the issue) and then the production URL (closes it).
+#
+# Note: GitHub disables scheduled workflows after ~60 days without repo
+# activity — normal development keeps this alive without any maintenance.
+
+on:
+  schedule:
+    # Every 6 hours (00:00, 06:00, 12:00, 18:00 UTC).
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      url:
+        description: URL to smoke-test (defaults to the production site)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: uptime
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      URL: ${{ inputs.url || 'https://vieuxniang.github.io/Budget-et-Compte/' }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Smoke-test the live site
+        id: smoke
+        # Sized to stay under a couple of minutes; scheduled checks do not
+        # need the deploy path's propagation patience.
+        env:
+          SMOKE_RETRIES: '4'
+          SMOKE_WAIT: '15'
+        run: scripts/smoke-test.sh "$URL"
+
+      - name: Record the failure (open or update the issue)
+        if: steps.smoke.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          OPEN=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open \
+            --search "Uptime failure in:title" --json number --jq '.[].number')
+          if [ -z "$OPEN" ]; then
+            gh issue create --repo "$GITHUB_REPOSITORY" \
+              --title "Uptime failure — smoke test failing against $URL" \
+              --body "The scheduled smoke test failed against \`$URL\`.
+
+          First failing run: $RUN_URL
+          Detected: $(date -u '+%Y-%m-%d %H:%M:%SZ')
+
+          The test checks the branded app shell, its entry JS bundle, the
+          webmanifest and the service worker (scripts/smoke-test.sh). This
+          issue closes automatically on the next passing check — failures
+          in between are appended as comments."
+          else
+            for N in $OPEN; do
+              gh issue comment "$N" --repo "$GITHUB_REPOSITORY" \
+                --body "Still failing: $RUN_URL ($(date -u '+%Y-%m-%d %H:%M:%SZ'))."
+            done
+          fi
+
+      - name: Record the recovery (close the issue)
+        if: steps.smoke.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          OPEN=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open \
+            --search "Uptime failure in:title" --json number --jq '.[].number')
+          [ -z "$OPEN" ] && exit 0
+          for N in $OPEN; do
+            gh issue close "$N" --repo "$GITHUB_REPOSITORY" \
+              --comment "Recovered — smoke test passes against \`$URL\` ($RUN_URL)."
+          done
+          echo "✓ recovered; issue(s) closed: $OPEN"
