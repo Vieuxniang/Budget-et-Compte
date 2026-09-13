@@ -821,6 +821,24 @@ export class SyncEngine {
   }
 
   /**
+   * What `restore(id)` would produce, without restoring anything — the
+   * confirmation card shows it, because a restore syncs to every device the
+   * moment it runs. Reads engine state only; null when the entry is gone.
+   */
+  previewRestore(id: RecordId): AppData | null {
+    const record = this.values[id] as ConflictRecord | undefined;
+    if (!record || !id.startsWith('conflict:')) return null;
+    const records = { ...this.localSnapshot().records };
+    const stamp = records[record.target]?.c ?? record.discarded.c;
+    records[record.target] = record.discarded.deleted
+      ? { c: stamp, deleted: true }
+      : { c: stamp, value: record.discarded.value };
+    // applyRecords ignores clocks: presence, value and tombstones are what an
+    // AppData is made of, which is exactly what the preview must get right.
+    return applyRecords(records);
+  }
+
+  /**
    * Puts a discarded version back — stamped with a fresh clock so it wins
    * everywhere — and retires the archive entry. Returns the new AppData for the
    * caller to persist (null when nothing was restored).

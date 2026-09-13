@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import {
   RefreshCw, KeyRound, CloudOff, Cloud, AlertTriangle, ShieldCheck, Copy, Check,
-  Power, Unplug, RotateCcw, History,
+  Power, Unplug, RotateCcw, History, Loader2,
 } from 'lucide-react';
 import { useI18n } from '../i18n/useI18n';
 import type { AppData } from '../services/storage';
 import type { SyncEngine } from '../services/sync/engine';
 import type { ConflictRecord } from '../services/sync/types';
+import { backupSummary } from '../services/backup';
 
 /**
  * Réglages → Synchronisation.
@@ -20,6 +21,16 @@ interface SyncViewProps {
   engine: SyncEngine;
   /** Applies data the engine pulled (the app owns the vault write). */
   onApplyData: (data: AppData) => void;
+}
+
+/** An overwrite waiting for the user's informed yes. */
+interface StagedOverwrite {
+  /** A pull replaces the device's data; a restore also syncs to every device. */
+  kind: 'pull' | 'restore';
+  /** The complete data the action would produce — the card shows its counts. */
+  data: AppData;
+  /** Archive entry id, for a restore. */
+  restoreId?: string;
 }
 
 function shortId(value: string): string {
@@ -43,6 +54,10 @@ export const SyncView: React.FC<SyncViewProps> = ({ engine, onApplyData }) => {
   const [revealed, setRevealed] = useState(false);
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
+  // A pull or a restore replaces data, so neither applies itself: the result is
+  // staged here and the card below shows what it contains before the user
+  // confirms. Leaving this screen drops the offer and changes nothing.
+  const [staged, setStaged] = useState<StagedOverwrite | null>(null);
 
   useEffect(() => {
     setState(engine.state());
@@ -70,12 +85,28 @@ export const SyncView: React.FC<SyncViewProps> = ({ engine, onApplyData }) => {
 
   const syncNow = () => run(async () => {
     const report = await engine.sync();
-    if (report.data) onApplyData(report.data);
+    // The engine has already committed its merge (declining is safe: the next
+    // edit re-enters the exchange as a normal local change), so staging is only
+    // about what lands in *this* device's vault.
+    if (report.data) setStaged({ kind: 'pull', data: report.data });
   });
 
-  const restore = (id: string) => run(async () => {
-    const data = await engine.restore(id);
-    if (data) onApplyData(data);
+  const restore = (id: string) => {
+    // Unlike a pull, a restore syncs to every device the moment it runs — so it
+    // is previewed before the engine is touched at all.
+    const preview = engine.previewRestore(id);
+    if (preview) setStaged({ kind: 'restore', data: preview, restoreId: id });
+  };
+
+  const confirmStaged = () => run(async () => {
+    if (!staged) return;
+    if (staged.kind === 'restore' && staged.restoreId) {
+      const data = await engine.restore(staged.restoreId);
+      if (data) onApplyData(data);
+    } else {
+      onApplyData(staged.data);
+    }
+    setStaged(null);
   });
 
   const status = state.status;
@@ -91,6 +122,38 @@ export const SyncView: React.FC<SyncViewProps> = ({ engine, onApplyData }) => {
 
   return (
     <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+      {/* The overwrite card comes first: nothing else on this screen matters
+          while a replace-everything decision is pending. */}
+      {staged && (
+        <div role="alert" className="p-3 bg-slate-800/60 border border-amber-500/40 rounded-xl space-y-2">
+          <p className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            {staged.kind === 'pull' ? t('settings.sync.pullTitle') : t('settings.sync.restoreTitle')}
+          </p>
+          <p className="text-xs text-slate-300">
+            {staged.kind === 'pull' ? t('settings.sync.pullBody') : t('settings.sync.restoreBody')}
+          </p>
+          <p className="text-xs text-emerald-300 font-semibold">{backupSummary(staged.data, t)}</p>
+          <p className="text-[11px] text-slate-400">{t('settings.sync.confirmWarning')}</p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setStaged(null)}
+              className="flex-1 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition"
+            >
+              {t('common.cancel')}
+            </button>
+            <button
+              onClick={confirmStaged}
+              disabled={busy}
+              className="flex-1 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 disabled:opacity-40 text-slate-950 text-xs font-bold transition flex items-center justify-center gap-1.5"
+            >
+              {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
+              {t('settings.sync.apply')}
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="text-sm font-semibold text-emerald-400 uppercase tracking-wider flex items-center gap-2">

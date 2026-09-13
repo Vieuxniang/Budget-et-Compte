@@ -329,6 +329,73 @@ describe('two devices and one relay', () => {
     expect(a.data.goals.find((goal) => goal.id === 'g-1')?.targetAmount).toBe(9_000_000);
   });
 
+  it('previewRestore shows what a restore would produce, without touching anything', async () => {
+    await pair();
+    clock += 1_000;
+    a.data = { ...a.data, goals: a.data.goals.map((g) => (g.id === 'g-1' ? { ...g, targetAmount: 7_000_000 } : g)) };
+    a.engine.publish(a.data);
+    clock += 1_000;
+    b.data = { ...b.data, goals: b.data.goals.map((g) => (g.id === 'g-1' ? { ...g, targetAmount: 9_000_000 } : g)) };
+    b.engine.publish(b.data);
+    await sync(a);
+    clock += 1_000;
+    await sync(b);
+    const entry = b.engine.state().archive[0];
+    const before = JSON.stringify(b.data);
+
+    const preview = b.engine.previewRestore(entry.id);
+    expect(preview).not.toBeNull();
+    // The discarded amount is what the card would show — and the engine state,
+    // the archive and the data are exactly as they were.
+    expect(preview!.goals.find((g) => g.id === 'g-1')?.targetAmount).toBe(7_000_000);
+    expect(JSON.stringify(b.data)).toBe(before);
+    expect(b.engine.state().archive).toHaveLength(1);
+
+    // A sync after a preview is unaffected, and the real restore then produces
+    // the same data the preview showed.
+    clock += 1_000;
+    const report = await sync(b);
+    expect(report.data).toBeNull();
+    const restored = await b.engine.restore(entry.id);
+    expect(restored!.goals.find((g) => g.id === 'g-1')?.targetAmount).toBe(7_000_000);
+  });
+
+  it('previewRestore previews a discarded deletion as an empty-handed restore', async () => {
+    await pair();
+    clock += 1_000;
+    a.data = { ...a.data, goals: a.data.goals.filter((g) => g.id !== 'g-1') };
+    a.engine.publish(a.data);
+    clock += 1_000;
+    b.data = { ...b.data, goals: b.data.goals.map((g) => (g.id === 'g-1' ? { ...g, targetAmount: 9_000_000 } : g)) };
+    b.engine.publish(b.data);
+    await sync(a);
+    clock += 1_000;
+    await sync(b);
+    const entry = b.engine.state().archive[0];
+
+    const preview = b.engine.previewRestore(entry.id);
+    expect(preview).not.toBeNull();
+    // The discarded side was a deletion: putting it back removes the goal.
+    expect(preview!.goals.some((g) => g.id === 'g-1')).toBe(false);
+  });
+
+  it('previewRestore returns null for an unknown or vanished entry', async () => {
+    expect(await Promise.resolve(a.engine.previewRestore(recordId('conflict', 'nope') as never))).toBeNull();
+    await pair();
+    clock += 1_000;
+    a.data = { ...a.data, goals: a.data.goals.map((g) => (g.id === 'g-1' ? { ...g, targetAmount: 7_000_000 } : g)) };
+    a.engine.publish(a.data);
+    clock += 1_000;
+    b.data = { ...b.data, goals: b.data.goals.map((g) => (g.id === 'g-1' ? { ...g, targetAmount: 9_000_000 } : g)) };
+    b.engine.publish(b.data);
+    await sync(a);
+    clock += 1_000;
+    await sync(b);
+    const entry = b.engine.state().archive[0];
+    await b.engine.dismiss(entry.id);
+    expect(b.engine.previewRestore(entry.id)).toBeNull();
+  });
+
   it('lets the losing version be put back, everywhere', async () => {
     await pair();
     clock += 1_000;
