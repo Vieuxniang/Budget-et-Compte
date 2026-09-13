@@ -5,12 +5,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# `pages: write` + `id-token: write` are what the GitHub Pages deploy
-# (OIDC) needs; `contents: read` is the least the checkout requires.
+# Verify needs nothing beyond read; the deploy job scopes its own
+# Pages/OIDC permissions — least privilege per job.
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 # A new push to main supersedes the run from the previous one.
 concurrency:
@@ -68,6 +66,11 @@ jobs:
     needs: verify
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    # Only the deploy job may publish to Pages (OIDC).
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
