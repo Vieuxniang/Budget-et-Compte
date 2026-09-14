@@ -10,6 +10,57 @@ repo and comes back the day the merchant account exists — nothing in the app
 changes: the buy button appears only when a shop URL is configured, and the
 paste-key form is always there.
 
+## The announcement (post where your buyers are)
+
+Ready-to-post template. Fill the two placeholders — the payment number and the
+contact — and nothing else; the prices and feature gates below are the app's real
+ones, so the post never promises more than the build delivers. Re-post the same
+text everywhere and update it in this file first, so every channel says the same
+thing.
+
+> *Budget et Compte* — gérez l'argent de votre famille en toute confidentialité 📱
+>
+> 100% local : vos données restent chiffrées sur votre téléphone (AES-256).
+> Sans compte, sans publicité, fonctionne hors ligne. La synchronisation
+> multi-appareils est optionnelle et chiffrée de bout en bout.
+>
+> ✅ Comptes bancaires, espèces, Mobile Money (Wave, Orange Money, MTN MoMo)
+> ✅ Budget mensuel par catégorie, alertes de dépassement, export CSV
+> ✅ Épargne par objectifs · tontines & associations · packs pays (SN, CI, CM, BF, ML)
+> ✅ Français / English / Español — FCFA, Dollar, Euro…
+>
+> 📲 *Installation gratuite* : ouvrez https://vieuxniang.github.io/Budget-et-Compte/
+> puis « Ajouter à l'écran d'accueil ».
+>
+> ⭐ *PRO — 5 000 F, un seul paiement (à vie)*
+> • 25 objectifs d'épargne (1 en version gratuite)
+> • Tous les packs pays (1 offert)
+> • 1 tontine
+>
+> 🤝 *ASSOCIATION — 50 000 F / an*
+> • 25 tontines (jusqu'à 200 membres chacune) + tous les packs pays
+>
+> *Comment obtenir Pro :*
+> 1️⃣ Payez par Wave / Orange Money / MTN MoMo au *+221 XX XXX XX XX*
+> 2️⃣ Envoyez la capture + votre e-mail + votre nom à *vieuxn33@gmail.com*
+> 3️⃣ Recevez votre clé de licence par e-mail, dès confirmation du paiement
+> 4️⃣ Dans l'app : Réglages → Offre & licence → collez la clé → Activer
+>
+> La clé s'active sur votre appareil, sans compte ni serveur. Gardez l'e-mail :
+> elle réactive Pro après une réinstallation. Questions ? *vieuxn33@gmail.com*
+
+English one-liner for mixed-language groups:
+
+> *Budget et Compte* — 100% local family finance (encrypted on your phone, no
+> account, works offline). Pro: 5,000 F once — 25 savings goals, all country
+> packs, tontine. Pay Wave/Orange Money to *+221 XX XXX XX XX*, e-mail your
+> receipt to *vieuxn33@gmail.com*, get your licence key by e-mail, paste it in
+> the app. https://vieuxniang.github.io/Budget-et-Compte/
+
+The install URL is the github.io one until `budgetetcompte.ci` delegates — when
+the domain lands, update this template, the WhatsApp post and the store listing
+together (one release, per the listing consistency rule).
+
 ## 1. Receive the payment
 
 Announce your numbers wherever you sell (WhatsApp, store listing notes, README):
