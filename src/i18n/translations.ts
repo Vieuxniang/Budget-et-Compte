@@ -156,7 +156,7 @@ export const fr: Dict = {
 
   // Offer & license
   'settings.license.title': 'Offre & licence',
-  'settings.license.subtitle': 'Débloquez Pro avec une clé vérifiée sur votre appareil — aucun compte, aucun serveur.',
+  'settings.license.subtitle': 'Débloquez Pro avec une clé vérifiée sur votre appareil — sans compte, sans connexion.',
   'settings.license.planFree': 'Offre gratuite',
   'settings.license.planPro': 'Licence Pro activée',
   'settings.license.licensedTo': 'Licence de {name}',
@@ -343,9 +343,9 @@ export const fr: Dict = {
   // Settings — about
   'settings.about.title': 'À propos',
   'settings.about.version': 'Version {version}',
-  'settings.about.privacy': 'Données 100% locales — rien ne quitte votre appareil.',
+  'settings.about.privacy': 'Données 100% locales et chiffrées. Seule exception : la synchronisation multi-appareils, optionnelle et chiffrée de bout en bout — le serveur ne voit que du chiffré.',
   'settings.about.encryption': 'Vos données sont chiffrées (AES-GCM 256) et protégées par votre mot de passe.',
-  'settings.about.noAccount': 'Aucun compte, aucun serveur, aucune publicité.',
+  'settings.about.noAccount': 'Aucun compte requis, aucune publicité.',
 
   // Settings — accounts
   'settings.accounts.title': 'Comptes & portefeuilles',
@@ -751,7 +751,7 @@ export const en: Dict = {
   'errors.goalCurrentNegative': 'The amount already saved cannot be negative.',
 
   'settings.license.title': 'Offer & license',
-  'settings.license.subtitle': 'Unlock Pro with a key verified on your device — no account, no server.',
+  'settings.license.subtitle': 'Unlock Pro with a key verified on your device — no account, no connection needed.',
   'settings.license.planFree': 'Free offer',
   'settings.license.planPro': 'Pro license active',
   'settings.license.licensedTo': 'Licensed to {name}',
@@ -931,9 +931,9 @@ export const en: Dict = {
 
   'settings.about.title': 'About',
   'settings.about.version': 'Version {version}',
-  'settings.about.privacy': '100% local data — nothing leaves your device.',
+  'settings.about.privacy': '100% local, encrypted data. One exception: optional multi-device sync, end-to-end encrypted — the server only ever sees ciphertext.',
   'settings.about.encryption': 'Your data is encrypted (AES-GCM 256) and protected by your password.',
-  'settings.about.noAccount': 'No account, no server, no ads.',
+  'settings.about.noAccount': 'No account required, no ads.',
 
   'settings.accounts.title': 'Accounts & wallets',
   'settings.accounts.new': 'New account',
@@ -1332,7 +1332,7 @@ export const es: Dict = {
   'errors.goalCurrentNegative': 'El importe ya ahorrado no puede ser negativo.',
 
   'settings.license.title': 'Oferta y licencia',
-  'settings.license.subtitle': 'Desbloquea Pro con una clave verificada en tu dispositivo: sin cuenta ni servidor.',
+  'settings.license.subtitle': 'Desbloquea Pro con una clave verificada en tu dispositivo: sin cuenta ni conexión.',
   'settings.license.planFree': 'Oferta gratuita',
   'settings.license.planPro': 'Licencia Pro activada',
   'settings.license.licensedTo': 'Licencia de {name}',
@@ -1512,9 +1512,9 @@ export const es: Dict = {
 
   'settings.about.title': 'Acerca de',
   'settings.about.version': 'Versión {version}',
-  'settings.about.privacy': 'Datos 100% locales — nada sale de su dispositivo.',
+  'settings.about.privacy': 'Datos 100% locales y cifrados. Única excepción: la sincronización opcional entre dispositivos, cifrada de punta a punta — el servidor solo ve datos cifrados.',
   'settings.about.encryption': 'Sus datos están cifrados (AES-GCM 256) y protegidos por su contraseña.',
-  'settings.about.noAccount': 'Sin cuenta, sin servidor, sin anuncios.',
+  'settings.about.noAccount': 'Sin cuenta obligatoria, sin anuncios.',
 
   'settings.accounts.title': 'Cuentas y billeteras',
   'settings.accounts.new': 'Nueva cuenta',
