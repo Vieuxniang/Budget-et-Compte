@@ -21,6 +21,25 @@ without that exception (same rule as the in-app About screen and the decision lo
 - **Default language:** Français (EN/ES built-in)
 - **Free (Pro is a one-time upgrade), no account required, no ads**
 
+### Pro & Association (in-app upgrade)
+
+The app is fully usable free; Pro is a **one-time** 5 000 F CFA purchase and
+Association an annual 50 000 F CFA plan, unlocked by a licence key that the app
+verifies **on the device** (no account, no server):
+
+| Offer | Price | Unlocks |
+|---|---|---|
+| **Pro** | 5 000 F CFA, once | 25 savings goals (1 free), all country packs (1 free), 1 tontine |
+| **Association** | 50 000 F CFA / year | 25 tontines (up to 200 members each) + all country packs |
+
+Sales are currently **manual**: pay by Wave / Orange Money / MTN MoMo to the
+publisher's number, e-mail the receipt to `vieuxn33@gmail.com`, and the licence
+key comes back by e-mail (runbook: `purchase/MANUAL-SALES.md`). The paste-key
+form lives in Réglages → Offre & licence and works offline. The automated
+mobile-money checkout returns when the merchant account is live; store copy
+about the *purchase channel* changes then — the gates and prices above are the
+app's real ones and only change with a release.
+
 ---
 
 ## Web app (PWA)
