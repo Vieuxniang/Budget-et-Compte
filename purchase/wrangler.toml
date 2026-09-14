@@ -31,9 +31,9 @@ crons = ["*/15 * * * *"]
 [vars]
 # Where the worker is reachable — CinetPay posts its notification here, so it
 # must be the public HTTPS origin, never localhost.
-PUBLIC_BASE_URL = "https://licence.budgetetcompte.example"
+PUBLIC_BASE_URL = "https://budget-et-compte-shop.vieuxn33.workers.dev"
 # Where the buyer lands after paying.
-SITE_URL = "https://licence.budgetetcompte.example/index.html"
+SITE_URL = "https://budget-et-compte-shop.vieuxn33.workers.dev/index.html"
 EMAIL_PROVIDER = "resend"
 # Sandbox-only sender: until budgetetcompte.ci is registered and verified in
 # Resend, the only allowed sender is onboarding@resend.dev (and only to the
