@@ -108,6 +108,15 @@ curl -s https://<your-host>/health
 `ready:false` lists what is missing — fix that before announcing the price to
 anyone.
 
+**Current sandbox deployment (Phase 3, 2026-09-13):** live at
+`https://budget-et-compte-shop.vieuxn33.workers.dev` with placeholder
+`*.example` URLs and the sandbox sender (`onboarding@resend.dev`, see the
+toml); `/health` reports `ready:false` pending the three operator keys
+(CINETPAY_API_KEY, CINETPAY_SITE_ID, RESEND_API_KEY) — `LICENSE_PRIVATE_JWK`
+and the KV namespace (`c701156ba0784da9838433d38e184224`) are already in.
+`wrangler` is a devDependency of the repo, so run these commands from
+`purchase/` with the project's own copy (`npx wrangler …`).
+
 ## Local dry run
 
 ```bash
