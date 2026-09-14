@@ -19,7 +19,7 @@ not_found_handling = "single-page-application"
 #   npx wrangler kv namespace create ORDERS
 [[kv_namespaces]]
 binding = "ORDERS"
-id = "REPLACE_WITH_YOUR_KV_ID"
+id = "c701156ba0784da9838433d38e184224"
 
 # The safety net under the webhook: every 15 minutes the worker re-asks CinetPay
 # about orders still waiting for money, so a notification that was lost (a deploy
@@ -35,7 +35,12 @@ PUBLIC_BASE_URL = "https://licence.budgetetcompte.example"
 # Where the buyer lands after paying.
 SITE_URL = "https://licence.budgetetcompte.example/index.html"
 EMAIL_PROVIDER = "resend"
-EMAIL_FROM = "Budget et Compte <licences@budgetetcompte.example>"
+# Sandbox-only sender: until budgetetcompte.ci is registered and verified in
+# Resend, the only allowed sender is onboarding@resend.dev (and only to the
+# account owner's address). The go-live pass swaps this to
+# "Budget et Compte <licences@budgetetcompte.ci>" after Resend verifies the
+# domain — see the domain checklist in .freebuff/run.md.
+EMAIL_FROM = "Budget et Compte <onboarding@resend.dev>"
 SUPPORT_EMAIL = "aide@budgetetcompte.example"
 # Empty = no CORS restriction (fine to start, tighten before scaling).
 ALLOWED_ORIGINS = ""
