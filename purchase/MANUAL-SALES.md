@@ -118,6 +118,27 @@ The ledger is your only way to re-issue a key for a reinstated buyer: the app
 accepts the same key again at any time, so re-minting with the same `--id`,
 name and plan produces a working replacement even if you never stored the key.
 
+## 5. Revoking a key (refund, dispute, leaked demo key)
+
+Licences never expire on their own, so the only way to stop a key from
+unlocking Pro is to revoke it by id. The id lands in an embedded list
+(`src/services/revocations.json`) that ships with the next app build — every
+device re-checks its licence against the list on every boot, so revocation
+takes effect at each buyer's next app update, still fully offline.
+
+```bash
+node scripts/revoke-license.mjs lic_aymeric      # add to the list
+node scripts/revoke-license.mjs --undo lic_aymeric   # only for a genuine mistake
+```
+
+- `mint-license.mjs` refuses a revoked id — a refunded licence cannot be
+  re-sold by re-minting the same id (issue the replacement under a fresh id).
+- The buyer's app shows « Cette clé a été résiliée par l’éditeur » and drops
+  back to the free limits; their data is untouched.
+- **Never revoke an id to "test"** — the demo dry run uses a throwaway id
+  instead (`lic_dryrun_demo` was revoked for exactly that reason: its key text
+  was published during the sale rehearsal).
+
 ## Rules that keep this safe
 
 - The private key file never leaves `.freebuff/`; nothing in this flow ever

@@ -34,6 +34,17 @@ if (!fs.existsSync(keyPath)) {
   process.exit(1);
 }
 
+// A revoked id must never be minted again: the app would refuse the key on
+// sight, and the buyer would pay for a licence that cannot activate.
+const revocationsPath = 'src/services/revocations.json';
+const revokedIds = new Set(
+  JSON.parse(fs.readFileSync(revocationsPath, 'utf8')).revoked
+);
+if (revokedIds.has(id)) {
+  console.error(`Refusing: ${id} is revoked (see ${revocationsPath}). Choose a fresh id for the new buyer.`);
+  process.exit(1);
+}
+
 const payload = {
   v: 1,
   id,

@@ -11,9 +11,10 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 import {
   savingsGoalLimit, tontineGroupLimit, tontineMemberLimit,
   verifyLicenseKey, parseLicenseKey, getStoredLicense, saveLicense,
-  subscribeLicense, isInvalidReason, LICENSE_PREFIX, LICENSE_PUBLIC_KEY,
+  subscribeLicense, isInvalidReason, isRevokedId, LICENSE_PREFIX, LICENSE_PUBLIC_KEY,
   ECDSA_PUBLIC_KEY_BYTES,
 } from './license';
+import revocations from './revocations.json';
 import { fromBase64Url, toBase64Url } from './crypto';
 
 /** base64url of a UTF-8 string — no Buffer, so no @types/node needed. */
@@ -155,6 +156,34 @@ describe('verifyLicenseKey', () => {
       .toEqual({ status: 'invalid', reason: 'payload' });
   });
 
+  it('revokes a key by id even though its signature is perfectly valid', async () => {
+    // The dry-run demo key whose text was published during the sale rehearsal.
+    const key = await signer.sign(proPayload({ id: 'lic_dryrun_demo' }));
+    expect(await verifyWith(key)).toEqual({ status: 'invalid', reason: 'revoked' });
+    // An unlisted id verifies as before — the list refuses, it never doubts.
+    const live = await verifyWith(await signer.sign(proPayload({ id: 'lic_other' })));
+    expect(live.status).toBe('active');
+  });
+
+  it('checks revocation after the signature, so forgery still reports as forgery', async () => {
+    const key = await signer.sign(proPayload({ id: 'lic_dryrun_demo' }));
+    const [, , signature] = key.split('.');
+    const forged = encode(JSON.stringify(proPayload({ id: 'lic_innocent' })));
+    expect(await verifyWith(`${LICENSE_PREFIX}.${forged}.${signature}`))
+      .toEqual({ status: 'invalid', reason: 'signature' });
+  });
+
+  it('embeds a shape-checked revocation list', () => {
+    expect(revocations.v).toBe(1);
+    expect(Array.isArray(revocations.revoked)).toBe(true);
+    for (const id of revocations.revoked) {
+      expect(typeof id).toBe('string');
+      expect(id.startsWith('lic_')).toBe(true);
+      expect(isRevokedId(id)).toBe(true);
+    }
+    expect(isRevokedId('lic_never_issued')).toBe(false);
+  });
+
   it('ignores surrounding whitespace (keys get pasted by hand)', async () => {
     const key = await signer.sign(proPayload());
     expect((await verifyWith(`  ${key}\n`)).status).toBe('active');
@@ -208,7 +237,7 @@ describe('feature gates', () => {
 
 describe('isInvalidReason', () => {
   it('accepts the reasons verify can report and nothing else', () => {
-    for (const reason of ['format', 'signature', 'payload', 'expired', 'unsupported', 'unavailable']) {
+    for (const reason of ['format', 'signature', 'payload', 'expired', 'unsupported', 'revoked', 'unavailable']) {
       expect(isInvalidReason(reason)).toBe(true);
     }
     expect(isInvalidReason('whatever')).toBe(false);
