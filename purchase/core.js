@@ -245,9 +245,11 @@ export function newOrder({ reference, plan, country, email, name, phone, statusT
  * The body CinetPay expects for a new checkout. Built here (and tested) so the
  * worker stays a shell, and so a field renaming shows up in one place.
  *
- * `channels`/`payment_method` are intentionally left open: the buyer picks the
- * operator on CinetPay's own page, which also handles the OTP/push flows the
- * operators require. We list them up front so the buyer knows what to expect.
+ * `payment_method` is intentionally left open: the operator is picked on
+ * CinetPay's own page, which also handles the OTP/push flows the operators
+ * require. `channels` restricts the cashier to mobile money — Wave, Orange
+ * Money, MTN MoMo, Moov — matching what we advertise and what the shop's
+ * operator badges list. Cards and wallets stay off the cashier.
  */
 export function buildCheckoutRequest(order, config) {
   return {
@@ -262,6 +264,7 @@ export function buildCheckoutRequest(order, config) {
     return_url: `${config.siteUrl}/thanks.html?ref=${encodeURIComponent(order.reference)}`,
     customer_email: order.email,
     customer_name: order.name,
+    channels: 'MOBILE_MONEY',
     ...(order.phone ? { customer_phone_number: order.phone } : {}),
     metadata: JSON.stringify({ plan: order.plan, reference: order.reference }).slice(0, 512),
   };

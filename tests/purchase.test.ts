@@ -153,6 +153,8 @@ describe('checkout', () => {
     expect(body.notify_url).toBe('https://paiement.example.com/api/notify');
     expect(body.return_url).toContain('thanks.html?ref=BC20260912K7F3Q9M2');
     expect(body.customer_email).toBe('kofi@example.com');
+    // Mobile money only: the cashier must not offer cards or wallets.
+    expect(body.channels).toBe('MOBILE_MONEY');
     expect(JSON.parse(body.metadata)).toEqual({ plan: 'pro', reference: order.reference });
   });
 
