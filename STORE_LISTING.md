@@ -6,6 +6,10 @@ listings below all ship it unchanged.
 Facts in this listing are verified against the app: 100% local storage, AES-GCM-256
 encrypted vault, Wave / Orange Money / MTN MoMo support, monthly budget, CSV export,
 encrypted backups, trilingual UI, multi-currency.
+Honesty rule (applies to every variant below): the **optional** multi-device sync is
+the one feature that touches a server, and it is end-to-end encrypted — the relay
+only ever stores ciphertext. Never write "no server" / "nothing leaves your device"
+without that exception (same rule as the in-app About screen and the decision log).
 
 ---
 
@@ -15,13 +19,13 @@ encrypted backups, trilingual UI, multi-currency.
 - **Tagline (FR):** Gestion financière familiale — comptes, budget & épargne
 - **Category:** Finance
 - **Default language:** Français (EN/ES built-in)
-- **Free, no account, no ads, no cloud**
+- **Free (Pro is a one-time upgrade), no account required, no ads**
 
 ---
 
 ## Web app (PWA)
 
-- **Canonical URL:** `https://budgetetcompte.ci` — the apex is canonical, `www` 301s to it. This is the listing URL for the web install, and the domain the PWA manifest `id` is pinned to (see `vite.config.ts`).
+- **Canonical URL (target):** `https://budgetetcompte.ci` — the apex is canonical, `www` 301s to it. This is the intended listing URL and the domain the PWA manifest `id` is pinned to (see `vite.config.ts`). **Until the .ci registration clears registry validation** (registry state verified 2026-09-13: NXDOMAIN at `any.nic.ci`, whois "No Object Found" — re-check with `scripts/domain-status.sh`), **the PWA actually serves at `https://vieuxniang.github.io/Budget-et-Compte/`**; the listing URL goes live with the domain wiring pass (`scripts/custom-domain.sh`).
 - **Install:** open the URL on a phone or desktop browser → « Ajouter à l'écran d'accueil » / « Installer ».
 - **Listing consistency rule:** the web listing must carry the same brand, tagline and honesty rules as the store listings; feature claims change in the same release everywhere.
 
@@ -41,8 +45,9 @@ Budget et Compte — gestion 100% locale : dépenses, épargne, Mobile Money.
 >
 > Vos finances familiales, en toute confidentialité. Budget et Compte gère vos
 > comptes et votre budget **entièrement sur votre téléphone** : aucune création de
-> compte, aucun serveur, aucune publicité. Vos données ne quittent jamais votre
-> appareil.
+> compte obligatoire, aucune publicité. Vos données restent chiffrées sur votre
+> appareil — et si vous activez la synchronisation multi-appareils (optionnelle),
+> elles voyagent chiffrées de bout en bout : le serveur ne voit que du chiffré.
 >
 > **Comptes & portefeuilles**
 > - Comptes bancaires, épargne, espèces et crédit
@@ -59,6 +64,15 @@ Budget et Compte — gestion 100% locale : dépenses, épargne, Mobile Money.
 > - Détection des dépassements et des dépenses hors budget
 > - Graphiques clairs : alloué vs dépensé
 >
+> **Épargne & tontine**
+> - Objectifs d'épargne avec suivi de progression
+> - Module tontine / association : membres, parts, tours de versement, reçus
+>   (1 groupe avec Pro, 25 avec l'offre Association)
+>
+> **Packs pays**
+> - Fiscalité salariale, frais de scolarité et modèles de budget par pays
+>   (Sénégal, Côte d'Ivoire, Cameroun, Burkina, Mali) — 1 pack offert, tous avec Pro
+>
 > **Sécurité maximale**
 > - Chiffrement AES-GCM 256 — illisible sans votre mot de passe
 > - Verrouillage automatique de la session
@@ -66,8 +80,9 @@ Budget et Compte — gestion 100% locale : dépenses, épargne, Mobile Money.
 >
 > **Pratique au quotidien**
 > - Français, English, Español — changement de langue instantané
-> - Devises : FCFA (XOF, XAF), Dollar, Euro et 17 autres, détectées selon votre région
+> - Devises : FCFA (XOF, XAF), Dollar, Euro et 16 autres, détectées selon votre région
 > - Thème sombre ou clair
+> - Synchronisation multi-appareils optionnelle, chiffrée de bout en bout
 > - Fonctionne hors ligne — installez-la comme une application
 >
 > Gérez l'argent de votre famille sans le confier à personne.
@@ -107,27 +122,33 @@ famille, FCFA, hors ligne, confidentialité.
 ### English
 
 > **Budget et Compte** keeps your family finances 100% local — encrypted on your
-> phone, no account, no server. Track bank accounts and Mobile Money wallets
-> (Wave, Orange Money, MTN MoMo), log expenses, income and transfers, and manage a
-> monthly budget per category with overspend alerts. AES-GCM-256 encryption,
-> auto-lock, plain or encrypted backups, works offline, dark/light themes,
-> multi-currency, and Français / English / Español.
+> phone, no account required, no ads. Track bank accounts and Mobile Money wallets
+> (Wave, Orange Money, MTN MoMo), log expenses, income and transfers, manage a
+> monthly budget per category with overspend alerts, save towards goals, run a
+> tontine, and install country packs (payroll, school fees, budget templates).
+> AES-GCM-256 encryption, auto-lock, plain or encrypted backups, works offline,
+> dark/light themes, multi-currency, and Français / English / Español. Optional
+> multi-device sync is end-to-end encrypted — the server only ever sees ciphertext.
 
 ### Español
 
 > **Budget et Compte** mantiene las finanzas familiares 100% locales — cifradas en
-> su teléfono, sin cuenta ni servidor. Controle cuentas bancarias y billeteras
-> Mobile Money (Wave, Orange Money, MTN MoMo), registre gastos, ingresos y
-> transferencias, y gestione un presupuesto mensual por categoría con alertas de
+> su teléfono, sin cuenta obligatoria ni anuncios. Controle cuentas bancarias y
+> billeteras Mobile Money (Wave, Orange Money, MTN MoMo), registre gastos, ingresos
+> y transferencias, y gestione un presupuesto mensual por categoría con alertas de
 > exceso. Cifrado AES-GCM-256, bloqueo automático, copias de seguridad cifradas,
-> funciona sin conexión, temas claro/oscuro y multi-moneda.
+> funciona sin conexión, temas claro/oscuro y multi-moneda. La sincronización
+> opcional entre dispositivos está cifrada de punta a punta: el servidor solo ve
+> datos cifrados.
 
 ---
 
 ## Deploy notes
 
 - Keep the listing honest: if features change (e.g. a savings-goals screen ships),
-  update the description in the same release.
+  update the description in the same release. The one-server-touch rule is fixed:
+  optional E2E-encrypted sync is always named as the exception (see the honesty
+  rule at the top).
 - Play short description and App Store subtitle both fit under their limits —
   re-verify after any wording change.
 - The built-in PWA description (`vite.config.ts` manifest + `index.html` meta) is

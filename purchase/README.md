@@ -230,7 +230,8 @@ after it.
 
 **Phase 3 — sandbox rehearsal while validation waits** (see Setup above):
 
-- [ ] Sandbox keys into `wrangler.toml`, KV namespace, the four secrets, deploy
+- [ ] Sandbox keys set as secrets (`wrangler secret put`, never the toml), KV
+      namespace wired, deploy
 - [ ] `curl /health` → `ready:true`
 - [ ] Full rehearsal from the app UI: buy → checkout → simulated payment →
       mailbox → key → Pro unlocked. Validation day is then a key-swap, not a
