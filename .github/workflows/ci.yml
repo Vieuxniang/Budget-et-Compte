@@ -51,9 +51,10 @@ jobs:
           # set to "/" by scripts/custom-domain.sh), the same build ships
           # root-relative. The same build is both tested and deployed.
           VITE_BASE: ${{ vars.PAGES_BASE || format('/{0}/', github.event.repository.name) }}
-          # The deployed licence shop: gives the PWA its working buy button.
-          # Without it the app falls back to the paste-a-key form.
-          VITE_SHOP_URL: https://budget-et-compte-shop.vieuxn33.workers.dev
+          # No VITE_SHOP_URL on purpose: sales are manual for now (see
+          # purchase/MANUAL-SALES.md), so the deployed PWA shows the
+          # paste-a-key form. When the automated shop goes live, set
+          # VITE_SHOP_URL here to the Worker origin and the buy button returns.
 
       # The exact bytes CI verified are what deploy publishes — no rebuild
       # in the deploy job, no drift between "tested" and "shipped".
