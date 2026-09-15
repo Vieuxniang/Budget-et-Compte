@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { BadgeCheck, KeyRound, Lock, Check, Sparkles, ShieldCheck, CreditCard, MailCheck } from 'lucide-react';
+import { BadgeCheck, KeyRound, Lock, Check, Sparkles, ShieldCheck, CreditCard, MailCheck, LifeBuoy } from 'lucide-react';
 import { useI18n } from '../i18n/useI18n';
 import { useLicense } from '../hooks/useLicense';
 import { hasShop, shopLink } from '../services/shop';
+import { hasSupport, supportLink } from '../services/support';
+import { parseLicenseKey, type LicenseInvalidReason } from '../services/license';
 
 interface OfferViewProps {
   /**
@@ -27,20 +29,35 @@ export const OfferView: React.FC<OfferViewProps> = ({ currency }) => {
   const [key, setKey] = useState('');
   const [busy, setBusy] = useState(false);
   const [activated, setActivated] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Rejections are stored as their reason key (never pre-translated): the
+  // message re-renders if the user switches language, and the revoked case —
+  // which carries the one-tap support contact — is directly derivable.
+  const [rejectedReason, setRejectedReason] = useState<LicenseInvalidReason | null>(null);
 
   // A key can also be rejected at load time (stored earlier, tampered with, or
   // simply from another publisher) — the screen must say so instead of looking
   // like no key was ever entered.
-  const storedProblem = error
-    ?? (state.status === 'invalid' ? t(`settings.license.error.${state.reason}`) : null);
+  const refusalReason =
+    rejectedReason ?? (state.status === 'invalid' ? state.reason : null);
+  const storedProblem = refusalReason ? t(`settings.license.error.${refusalReason}`) : null;
+
+  // The refused key text stays in `key` until a successful activation, so the
+  // licence id behind a 'revoked' refusal is recoverable here — it goes into
+  // the support mail's subject so the exchange is unambiguous.
+  const refusedId =
+    refusalReason === 'revoked' && !isPro
+      ? parseLicenseKey(key)?.payload.id
+      : undefined;
+  const supportSubject = refusedId
+    ? t('settings.license.supportSubject', { id: refusedId })
+    : t('settings.license.supportSubject');
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (busy || !key.trim()) return;
     setBusy(true);
     setActivated(false);
-    setError(null);
+    setRejectedReason(null);
     const next = await activate(key);
     setBusy(false);
     if (next.status === 'active') {
@@ -48,11 +65,7 @@ export const OfferView: React.FC<OfferViewProps> = ({ currency }) => {
       setActivated(true);
       return;
     }
-    setError(
-      next.status === 'invalid'
-        ? t(`settings.license.error.${next.reason}`)
-        : t('settings.license.error.format')
-    );
+    setRejectedReason(next.status === 'invalid' ? next.reason : 'format');
   };
 
   return (
@@ -141,7 +154,7 @@ export const OfferView: React.FC<OfferViewProps> = ({ currency }) => {
             </span>
             <input
               value={key}
-              onChange={(e) => { setKey(e.target.value); setError(null); setActivated(false); }}
+              onChange={(e) => { setKey(e.target.value); setRejectedReason(null); setActivated(false); }}
               placeholder={t('settings.license.keyPlaceholder')}
               spellCheck={false}
               autoComplete="off"
@@ -150,6 +163,23 @@ export const OfferView: React.FC<OfferViewProps> = ({ currency }) => {
           </label>
 
           {storedProblem && <p role="alert" className="text-[11px] text-red-400">{storedProblem}</p>}
+
+          {refusalReason === 'revoked' && hasSupport() && (
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-2.5 space-y-1.5">
+              <p className="text-[11px] text-amber-300 flex items-start gap-1.5">
+                <LifeBuoy className="h-3.5 w-3.5 shrink-0 mt-0.5" aria-hidden="true" />
+                {t('settings.license.revokedHelp')}
+              </p>
+              <a
+                href={supportLink(supportSubject)}
+                className="inline-flex items-center justify-center gap-1.5 w-full px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold transition"
+              >
+                <LifeBuoy className="h-3.5 w-3.5" aria-hidden="true" />
+                {t('settings.license.contactSupport')}
+              </a>
+            </div>
+          )}
+
           {activated && (
             <p className="text-[11px] text-emerald-400 flex items-center gap-1.5">
               <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" /> {t('settings.license.activated')}
@@ -171,7 +201,7 @@ export const OfferView: React.FC<OfferViewProps> = ({ currency }) => {
 
       {state.status !== 'free' && (
         <button
-          onClick={() => { deactivate(); setActivated(false); setError(null); }}
+          onClick={() => { deactivate(); setActivated(false); setRejectedReason(null); }}
           className="text-[11px] text-slate-400 hover:text-red-400 underline"
         >
           {t('settings.license.remove')}
