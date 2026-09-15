@@ -2,6 +2,7 @@
   "v": 1,
   "revoked": [
     "lic_dryrun_demo",
-    "lic_revoke_rehearsal"
+    "lic_revoke_rehearsal",
+    "lic_support_revoked"
   ]
 }
