@@ -4,7 +4,7 @@ import { useI18n } from '../i18n/useI18n';
 import { useLicense } from '../hooks/useLicense';
 import { hasShop, shopLink } from '../services/shop';
 import { hasSupport, supportLink } from '../services/support';
-import { parseLicenseKey, type LicenseInvalidReason } from '../services/license';
+import { getStoredLicense, parseLicenseKey, type LicenseInvalidReason } from '../services/license';
 
 interface OfferViewProps {
   /**
@@ -43,10 +43,14 @@ export const OfferView: React.FC<OfferViewProps> = ({ currency }) => {
 
   // The refused key text stays in `key` until a successful activation, so the
   // licence id behind a 'revoked' refusal is recoverable here — it goes into
-  // the support mail's subject so the exchange is unambiguous.
+  // the support mail's subject so the exchange is unambiguous. After a boot-time
+  // refusal the form is empty instead, and the id comes from the stored key.
+  // (A 'revoked' verdict always implies the key parsed, so one of the two hits.)
   const refusedId =
     refusalReason === 'revoked' && !isPro
       ? parseLicenseKey(key)?.payload.id
+        ?? parseLicenseKey(getStoredLicense() ?? '')?.payload.id
+        ?? '?'
       : undefined;
   const supportSubject = refusedId
     ? t('settings.license.supportSubject', { id: refusedId })
