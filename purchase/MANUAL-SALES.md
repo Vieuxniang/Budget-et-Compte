@@ -139,6 +139,17 @@ node scripts/revoke-license.mjs --undo lic_aymeric   # only for a genuine mistak
   instead (`lic_dryrun_demo` was revoked for exactly that reason: its key text
   was published during the sale rehearsal).
 
+### When the buyer contests (one-tap support link)
+
+A wrongly-revoked buyer sees a **« Contacter le support »** button right under
+the revoked message: a `mailto:` to the support inbox (default
+`vieuxn33@gmail.com`, build-time override `VITE_SUPPORT_EMAIL`; an empty
+override disables the contact) with the subject
+« Clé résiliée (<id>) — contestation » — the id makes the exchange unambiguous.
+On your side: check the ledger, `--undo` the id if the revocation was a genuine
+mistake, and ship the next build — the key re-verifies at the buyer's next app
+update.
+
 ## Rules that keep this safe
 
 - The private key file never leaves `.freebuff/`; nothing in this flow ever
