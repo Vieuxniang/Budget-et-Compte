@@ -1,6 +1,9 @@
 {
   "v": 1,
   "revoked": [
+    "lic_assoc_boundary",
+    "lic_assoc_edge",
+    "lic_assoc_expired",
     "lic_dryrun_demo",
     "lic_manualsale_demo",
     "lic_manualsale_probe",
