@@ -309,7 +309,7 @@ export async function deliverOrder(env, order, { fetchImpl = fetch, now = new Da
   return { order, licenseKey };
 }
 
-async function handleStripeWebhook(request, env, deps = {}) {
+export async function handleStripeWebhook(request, env, deps = {}) {
   const signature = request.headers.get('stripe-signature') || '';
   const raw = await request.text();
   const timestamp = signature.match(/(?:^|,)t=(\d+)/)?.[1];
