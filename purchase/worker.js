@@ -8,13 +8,10 @@
  *
  *   1. `POST /api/checkout` — the buyer's own request. It is treated as
  *      **untrusted input**: prices come from `core.js`, never from the body, so
- *      nobody can buy the 50 000 F licence for 100 F. The response is a URL to
- *      CinetPay's page; the worker never handles a card or a PIN.
- *   2. `POST /api/notify` — CinetPay's webhook. Unauthenticated HTTP until
- *      proven otherwise, so the stored notify token is compared in constant
- *      time, and the amount/currency are taken from an **authoritative
- *      re-query** of CinetPay, never from the notification body. Only then is a
- *      licence minted.
+ *      nobody can buy the 50 000 F licence for 100 F. The response is a Stripe
+ *      Checkout URL; the worker never handles card details.
+ *   2. `POST /api/stripe-webhook` — Stripe's signed webhook. The raw payload is
+ *      verified before the stored order is loaded and the licence is minted.
  *   3. `GET /api/order` — the buyer watching their own order. Authenticated by
  *      the per-order status token, and answered with `publicOrderView` (masked
  *      e-mail, never the key, never the notify token).
@@ -52,6 +49,7 @@ const DEFAULT_BASE_URL = 'https://api-checkout.cinetpay.com';
 const INIT_PATH = '/v2/payment';
 const CHECK_PATH = '/v2/payment/check';
 
+const BRAND = 'Budget et Compte';
 const ORDER_PREFIX = 'order:';
 /** A created order that never gets paid expires after a week. */
 const ORDER_TTL_SECONDS = 7 * 24 * 60 * 60;
@@ -83,8 +81,6 @@ export function readiness(env) {
   const missing = [];
   if (!env.STRIPE_SECRET_KEY) missing.push('STRIPE_SECRET_KEY');
   if (!env.STRIPE_WEBHOOK_SECRET) missing.push('STRIPE_WEBHOOK_SECRET');
-  if (!env.CINETPAY_API_KEY) missing.push('CINETPAY_API_KEY');
-  if (!env.CINETPAY_SITE_ID) missing.push('CINETPAY_SITE_ID');
   if (!env.LICENSE_PRIVATE_JWK) missing.push('LICENSE_PRIVATE_JWK');
   if (!env.ORDERS) missing.push('ORDERS (KV binding)');
   if (!env.EMAIL_FROM) missing.push('EMAIL_FROM');
@@ -316,7 +312,7 @@ export async function deliverOrder(env, order, { fetchImpl = fetch, now = new Da
 async function handleStripeWebhook(request, env, deps = {}) {
   const signature = request.headers.get('stripe-signature') || '';
   const raw = await request.text();
-  const timestamp = signature.match(/(?:^|,)t=(\\d+)/)?.[1];
+  const timestamp = signature.match(/(?:^|,)t=(\d+)/)?.[1];
   const received = signature.match(/(?:^|,)v1=([a-f0-9]+)/)?.[1];
   if (!timestamp || !received || Math.abs(Date.now() / 1000 - Number(timestamp)) > 300) return { status: 400, body: { ok: false, error: 'invalid-signature' } };
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(env.STRIPE_WEBHOOK_SECRET), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
