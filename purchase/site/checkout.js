@@ -91,6 +91,7 @@ form.addEventListener('submit', async (event) => {
   const name = document.getElementById('name').value.trim();
   const phone = document.getElementById('phone').value.trim();
   const plan = form.querySelector('input[name=plan]:checked')?.value;
+  const paymentMethod = document.getElementById('payment-method').value;
 
   if (!email.includes('@')) {
     showError('Vérifiez votre adresse e-mail : c’est là que la clé sera envoyée.');
@@ -105,7 +106,7 @@ form.addEventListener('submit', async (event) => {
   try {
     const order = await api('/api/checkout', {
       method: 'POST',
-      body: JSON.stringify({ plan, country: countryEl.value, email, name, phone }),
+      body: JSON.stringify({ plan, country: countryEl.value, email, name, phone, paymentMethod }),
     });
     // Remember the order *before* leaving the page: the confirmation reads the
     // reference from the query string and the token back from localStorage.

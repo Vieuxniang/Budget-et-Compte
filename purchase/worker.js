@@ -79,8 +79,8 @@ function readConfig(env, request) {
 /** True when the deployment is actually able to sell (used by `/health`). */
 export function readiness(env) {
   const missing = [];
-  if (!env.STRIPE_SECRET_KEY) missing.push('STRIPE_SECRET_KEY');
-  if (!env.STRIPE_WEBHOOK_SECRET) missing.push('STRIPE_WEBHOOK_SECRET');
+  if (!env.STRIPE_SECRET_KEY && !(env.CINETPAY_API_KEY && env.CINETPAY_SITE_ID)) missing.push('STRIPE_SECRET_KEY or CINETPAY_API_KEY/CINETPAY_SITE_ID');
+  if (env.STRIPE_SECRET_KEY && !env.STRIPE_WEBHOOK_SECRET) missing.push('STRIPE_WEBHOOK_SECRET');
   if (!env.LICENSE_PRIVATE_JWK) missing.push('LICENSE_PRIVATE_JWK');
   if (!env.ORDERS) missing.push('ORDERS (KV binding)');
   if (!env.EMAIL_FROM) missing.push('EMAIL_FROM');
@@ -243,6 +243,7 @@ export async function handleCheckout(body, env, deps = {}) {
   const email = typeof body?.email === 'string' ? body.email.trim() : '';
   const name = typeof body?.name === 'string' ? body.name.trim().slice(0, 80) : '';
   const phone = typeof body?.phone === 'string' ? body.phone.trim().slice(0, 24) : '';
+  const paymentMethod = body?.paymentMethod === 'mobile-money' ? 'mobile-money' : 'card';
 
   const plan = resolvePlan(planId, country);
   if (!plan) return badRequest('plan-not-sellable');
@@ -252,10 +253,23 @@ export async function handleCheckout(body, env, deps = {}) {
   const statusToken = toBase64Url(crypto.getRandomValues(new Uint8Array(18)));
   const order = newOrder({ reference, plan, country, email, name, phone, statusToken, now });
 
-  if (!config.stripeSecret) return badRequest('stripe-not-configured', 503);
-  const session = await stripeCheckout(order, config, fetchImpl);
-  order.paymentProvider = 'stripe';
-  order.paymentSessionId = session.id;
+  let paymentUrl;
+  if (paymentMethod === 'mobile-money') {
+    if (!config.apiKey || !config.siteId) return badRequest('mobile-money-not-configured', 503);
+    const response = await cinetpayInit(config, buildCheckoutRequest(order, config), fetchImpl);
+    const checkout = readCheckoutResponse(response);
+    if (!checkout.ok) throw new Error(`cinetpay checkout unavailable: ${checkout.message || 'missing payment URL'}`);
+    order.paymentProvider = 'cinetpay';
+    order.paymentSessionId = checkout.paymentToken;
+    order.notifyToken = checkout.notifyToken;
+    paymentUrl = checkout.paymentUrl;
+  } else {
+    if (!config.stripeSecret) return badRequest('stripe-not-configured', 503);
+    const session = await stripeCheckout(order, config, fetchImpl);
+    order.paymentProvider = 'stripe';
+    order.paymentSessionId = session.id;
+    paymentUrl = session.url;
+  }
   order.status = 'pending';
   await saveOrder(env, order);
 
@@ -269,7 +283,8 @@ export async function handleCheckout(body, env, deps = {}) {
       currency: order.currency,
       plan: order.plan,
       planLabel: order.planLabel,
-      paymentUrl: session.url,
+      paymentUrl,
+      paymentMethod,
       country,
       operators: (COUNTRIES[country]?.methods || []).map((code) => OPERATOR_NAMES[code] || code),
     },

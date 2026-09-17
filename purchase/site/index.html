@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Payer ma licence — Budget et Compte</title>
-<meta name="description" content="Payez votre licence Budget et Compte par Wave ou Orange Money. La clé arrive par e-mail, et l'application fonctionne ensuite hors-ligne.">
+<meta name="description" content="Payez votre abonnement Budget et Compte par carte, Wave ou Orange Money. La clé arrive par e-mail, et l'application fonctionne ensuite hors-ligne.">
 <meta name="color-scheme" content="dark light">
 <meta name="robots" content="noindex">
 <link rel="stylesheet" href="styles.css">
@@ -24,7 +24,19 @@
     </section>
 
     <section class="card">
-      <h2>2. Votre pays et votre opérateur</h2>
+      <h2>2. Mode de paiement</h2>
+      <label class="field">
+        <span for="payment-method">Choisissez votre mode de paiement</span>
+        <select id="payment-method" name="paymentMethod" required>
+          <option value="card">Carte bancaire — Stripe</option>
+          <option value="mobile-money">Mobile Money — Wave / Orange Money</option>
+        </select>
+      </label>
+      <p class="hint">Le paiement Mobile Money ouvre CinetPay, où vous choisirez l’opérateur disponible dans votre pays.</p>
+    </section>
+
+    <section class="card">
+      <h2>3. Votre pays et votre opérateur</h2>
       <label class="field">
         <span for="country">Pays</span>
         <select id="country" name="country" required></select>
