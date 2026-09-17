@@ -40,7 +40,7 @@ export function shopCountryForCurrency(currency: string): string {
  * already knows. Returns `''` when no shop is configured, so callers can render
  * conditionally with `hasShop()` — never a broken link.
  */
-export function shopLink(options: { plan?: 'pro' | 'association'; currency?: string; email?: string } = {}): string {
+export function shopLink(options: { plan?: 'pro' | 'pro-monthly' | 'pro-yearly' | 'association'; currency?: string; email?: string } = {}): string {
   if (!hasShop()) return '';
   const params = new URLSearchParams();
   const country = options.currency ? shopCountryForCurrency(options.currency) : '';

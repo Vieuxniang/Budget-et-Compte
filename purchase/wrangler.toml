@@ -21,16 +21,8 @@ not_found_handling = "single-page-application"
 binding = "ORDERS"
 id = "c701156ba0784da9838433d38e184224"
 
-# The safety net under the webhook: every 15 minutes the worker re-asks CinetPay
-# about orders still waiting for money, so a notification that was lost (a deploy
-# during the callback, CinetPay's retries exhausted) still yields the buyer's
-# licence instead of a paid order that never delivers.
-[triggers]
-crons = ["*/15 * * * *"]
-
 [vars]
-# Where the worker is reachable — CinetPay posts its notification here, so it
-# must be the public HTTPS origin, never localhost.
+# Public origin used to build Stripe return URLs.
 PUBLIC_BASE_URL = "https://budget-et-compte-shop.vieuxn33.workers.dev"
 # Where the buyer lands after paying (bare origin — core.js appends
 # /thanks.html?ref=… itself; a path suffix here would corrupt the URL).
@@ -46,9 +38,6 @@ SUPPORT_EMAIL = "aide@budgetetcompte.example"
 # Empty = no CORS restriction (fine to start, tighten before scaling).
 ALLOWED_ORIGINS = ""
 CHECKOUT_LANG = "fr"
-# CinetPay sandbox: https://api-checkout.cinetpay.com (same host, test keys).
-CINETPAY_BASE_URL = "https://api-checkout.cinetpay.com"
-
 # Secrets — set with `npx wrangler secret put <NAME>`, NEVER written here:
 #   CINETPAY_API_KEY      CinetPay dashboard → Intégration
 #   CINETPAY_SITE_ID      CinetPay dashboard → Intégration

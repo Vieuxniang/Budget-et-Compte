@@ -135,7 +135,7 @@ export const OfferView: React.FC<OfferViewProps> = ({ currency }) => {
             {t('settings.license.buyTitle')}
           </p>
           <a
-            href={shopLink({ plan: 'pro', currency })}
+            href={shopLink({ plan: 'pro-monthly', currency })}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center justify-center gap-2 w-full px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 text-xs font-bold transition"

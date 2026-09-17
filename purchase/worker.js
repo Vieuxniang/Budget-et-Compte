@@ -8,13 +8,10 @@
  *
  *   1. `POST /api/checkout` — the buyer's own request. It is treated as
  *      **untrusted input**: prices come from `core.js`, never from the body, so
- *      nobody can buy the 50 000 F licence for 100 F. The response is a URL to
- *      CinetPay's page; the worker never handles a card or a PIN.
- *   2. `POST /api/notify` — CinetPay's webhook. Unauthenticated HTTP until
- *      proven otherwise, so the stored notify token is compared in constant
- *      time, and the amount/currency are taken from an **authoritative
- *      re-query** of CinetPay, never from the notification body. Only then is a
- *      licence minted.
+ *      nobody can buy the 50 000 F licence for 100 F. The response is a Stripe
+ *      Checkout URL; the worker never handles card details.
+ *   2. `POST /api/stripe-webhook` — Stripe's signed webhook. The raw payload is
+ *      verified before the stored order is loaded and the licence is minted.
  *   3. `GET /api/order` — the buyer watching their own order. Authenticated by
  *      the per-order status token, and answered with `publicOrderView` (masked
  *      e-mail, never the key, never the notify token).
@@ -52,6 +49,7 @@ const DEFAULT_BASE_URL = 'https://api-checkout.cinetpay.com';
 const INIT_PATH = '/v2/payment';
 const CHECK_PATH = '/v2/payment/check';
 
+const BRAND = 'Budget et Compte';
 const ORDER_PREFIX = 'order:';
 /** A created order that never gets paid expires after a week. */
 const ORDER_TTL_SECONDS = 7 * 24 * 60 * 60;
@@ -73,14 +71,16 @@ function readConfig(env, request) {
     provider: env.EMAIL_PROVIDER || 'resend',
     emailFrom: env.EMAIL_FROM || '',
     resendKey: env.RESEND_API_KEY || '',
+    stripeSecret: env.STRIPE_SECRET_KEY || '',
+    stripeWebhookSecret: env.STRIPE_WEBHOOK_SECRET || '',
   };
 }
 
 /** True when the deployment is actually able to sell (used by `/health`). */
 export function readiness(env) {
   const missing = [];
-  if (!env.CINETPAY_API_KEY) missing.push('CINETPAY_API_KEY');
-  if (!env.CINETPAY_SITE_ID) missing.push('CINETPAY_SITE_ID');
+  if (!env.STRIPE_SECRET_KEY) missing.push('STRIPE_SECRET_KEY');
+  if (!env.STRIPE_WEBHOOK_SECRET) missing.push('STRIPE_WEBHOOK_SECRET');
   if (!env.LICENSE_PRIVATE_JWK) missing.push('LICENSE_PRIVATE_JWK');
   if (!env.ORDERS) missing.push('ORDERS (KV binding)');
   if (!env.EMAIL_FROM) missing.push('EMAIL_FROM');
@@ -138,13 +138,34 @@ async function cinetpayCheck(config, reference, fetchImpl) {
     body: JSON.stringify({ apikey: config.apiKey, site_id: config.siteId, transaction_id: reference }),
   });
   const text = await response.text();
-  try {
-    return JSON.parse(text);
-  } catch {
-    // An unreadable answer is "unavailable", not "unpaid": `decideDelivery`
-    // turns a null status into a retry, which is exactly right here.
-    return null;
+  try { return JSON.parse(text); } catch { return null; }
+}
+
+async function stripeCheckout(order, config, fetchImpl) {
+  const recurring = order.months === 1 || order.months === 12;
+  const form = new URLSearchParams({
+    mode: recurring ? 'subscription' : 'payment',
+    success_url: `${config.siteUrl}/thanks.html?ref=${encodeURIComponent(order.reference)}`,
+    cancel_url: `${config.siteUrl}/checkout.html?cancelled=1`,
+    customer_email: order.email,
+    'line_items[0][price_data][currency]': order.currency.toLowerCase(),
+    'line_items[0][price_data][product_data][name]': `${BRAND} — ${order.planLabel}`,
+    'line_items[0][price_data][unit_amount]': String(order.amount),
+    'line_items[0][quantity]': '1',
+    'metadata[reference]': order.reference,
+    'metadata[plan]': order.plan,
+  });
+  if (recurring) {
+    form.set('line_items[0][price_data][recurring][interval]', order.months === 1 ? 'month' : 'year');
   }
+  const response = await fetchImpl('https://api.stripe.com/v1/checkout/sessions', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${config.stripeSecret}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: form,
+  });
+  const data = await response.json();
+  if (!response.ok || !data.url) throw new Error(`stripe checkout ${response.status}`);
+  return data;
 }
 
 /**
@@ -231,17 +252,10 @@ export async function handleCheckout(body, env, deps = {}) {
   const statusToken = toBase64Url(crypto.getRandomValues(new Uint8Array(18)));
   const order = newOrder({ reference, plan, country, email, name, phone, statusToken, now });
 
-  const answer = await cinetpayInit(config, buildCheckoutRequest(order, config), fetchImpl);
-  const parsed = readCheckoutResponse(answer);
-  if (!parsed.ok) {
-    console.error('[checkout:refused]', JSON.stringify(answer).slice(0, 300));
-    return badRequest('payment-init-failed', 502);
-  }
-
-  // The notify token is what lets us recognise CinetPay's later call: without
-  // it, a random POST could ask for a licence.
-  order.notifyToken = parsed.notifyToken;
-  order.paymentToken = parsed.paymentToken;
+  if (!config.stripeSecret) return badRequest('stripe-not-configured', 503);
+  const session = await stripeCheckout(order, config, fetchImpl);
+  order.paymentProvider = 'stripe';
+  order.paymentSessionId = session.id;
   order.status = 'pending';
   await saveOrder(env, order);
 
@@ -255,7 +269,7 @@ export async function handleCheckout(body, env, deps = {}) {
       currency: order.currency,
       plan: order.plan,
       planLabel: order.planLabel,
-      paymentUrl: parsed.paymentUrl,
+      paymentUrl: session.url,
       country,
       operators: (COUNTRIES[country]?.methods || []).map((code) => OPERATOR_NAMES[code] || code),
     },
@@ -293,6 +307,25 @@ export async function deliverOrder(env, order, { fetchImpl = fetch, now = new Da
   order.licenseId = payload.id;
   await saveOrder(env, order, Math.max(ORDER_TTL_SECONDS, 400 * 24 * 60 * 60));
   return { order, licenseKey };
+}
+
+export async function handleStripeWebhook(request, env, deps = {}) {
+  const signature = request.headers.get('stripe-signature') || '';
+  const raw = await request.text();
+  const timestamp = signature.match(/(?:^|,)t=(\d+)/)?.[1];
+  const received = signature.match(/(?:^|,)v1=([a-f0-9]+)/)?.[1];
+  if (!timestamp || !received || Math.abs(Date.now() / 1000 - Number(timestamp)) > 300) return { status: 400, body: { ok: false, error: 'invalid-signature' } };
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(env.STRIPE_WEBHOOK_SECRET), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const digest = Array.from(new Uint8Array(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`${timestamp}.${raw}`)))).map((b) => b.toString(16).padStart(2, '0')).join('');
+  if (!timingSafeEqual(digest, received)) return { status: 400, body: { ok: false, error: 'invalid-signature' } };
+  const event = JSON.parse(raw);
+  if (!['checkout.session.completed', 'checkout.session.async_payment_succeeded'].includes(event.type)) return { status: 200, body: { ok: true } };
+  const session = event.data.object;
+  const order = await loadOrder(env, session.metadata?.reference);
+  if (!order || order.status === 'delivered') return { status: 200, body: { ok: true } };
+  if (session.payment_status !== 'paid' && event.type === 'checkout.session.completed') return { status: 200, body: { ok: true } };
+  await deliverOrder(env, order, deps);
+  return { status: 200, body: { ok: true } };
 }
 
 /**
@@ -546,7 +579,9 @@ export async function route(request, env, deps = {}) {
 
   let result;
   try {
-    if (url.pathname === '/api/checkout' && request.method === 'POST') {
+    if (url.pathname === '/api/stripe-webhook' && request.method === 'POST') {
+      result = await handleStripeWebhook(request, env, deps);
+  } else if (url.pathname === '/api/checkout' && request.method === 'POST') {
       const body = await readJson(request);
       if (!body) return json({ ok: false, error: 'invalid-json' }, 400, cors);
       result = await handleCheckout(body, env, { request, ...deps });

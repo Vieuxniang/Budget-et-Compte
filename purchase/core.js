@@ -94,7 +94,8 @@ export const OPERATOR_NAMES = {
  * members and expects the seller to still be there next year.
  */
 export const PLANS = {
-  pro: { id: 'pro', label: 'Pro', price: 5_000, months: null, blurb: 'Licence personnelle, à vie' },
+  'pro-monthly': { id: 'pro-monthly', label: 'Pro mensuel', price: 500, months: 1, blurb: 'Abonnement personnel — 500 XOF / mois', recurring: true },
+  'pro-yearly': { id: 'pro-yearly', label: 'Pro annuel', price: 5_000, months: 12, blurb: 'Abonnement personnel — 5 000 XOF / an', recurring: true },
   association: { id: 'association', label: 'Association', price: 50_000, months: 12, blurb: 'Tontines, coopératives — 12 mois' },
 };
 
